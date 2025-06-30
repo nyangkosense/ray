@@ -2,6 +2,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 #include "XPLMScenery.h"
 #include "XPLMGraphics.h"
 #include "XPLMDataAccess.h"
@@ -9,6 +10,7 @@
 #include "XPLMPlugin.h"
 #include "XPLMDisplay.h"
 #include "XPLMProcessing.h"
+#include "XPLMMenus.h"
 #include "missile_guidance.h"
 
 #ifndef M_PI
@@ -40,9 +42,14 @@ static XPLMDataRef gViewPitch = NULL;
 static XPLMHotKeyID gLaserHotkey = NULL;
 static XPLMHotKeyID gClearTargetHotkey = NULL;
 
+// Menu handling
+static XPLMMenuID gMenu = NULL;
+static int gMenuItemToggleWindow = 0;
+
 // Function declarations
 void LaserDesignationHotkey(void* refcon);
 void ClearTargetHotkey(void* refcon);
+void JTACMenuHandler(void* inMenuRef, void* inItemRef);
 
 // Terrain probe handle
 static XPLMProbeRef gTerrainProbe = NULL;
@@ -94,6 +101,11 @@ PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc) {
     // Register hotkey for clearing target (Ctrl+C)
     gClearTargetHotkey = XPLMRegisterHotKey(XPLM_VK_C, xplm_DownFlag | xplm_ControlFlag, "Clear Missile Target", ClearTargetHotkey, NULL);
     
+    // Create menu
+    int pluginMenuIndex = XPLMAppendMenuItem(XPLMFindPluginsMenu(), "JTAC Coordinate System", NULL, 1);
+    gMenu = XPLMCreateMenu("JTAC Coordinate System", XPLMFindPluginsMenu(), pluginMenuIndex, JTACMenuHandler, NULL);
+    gMenuItemToggleWindow = XPLMAppendMenuItem(gMenu, "Toggle Window", (void*)1, 1);
+    
     // Initialize missile guidance system
     if (!InitMissileGuidance()) {
         XPLMDebugString("JTAC: Warning - Missile guidance system failed to initialize\n");
@@ -109,6 +121,9 @@ PLUGIN_API void XPluginStop(void) {
     }
     if (gClearTargetHotkey) {
         XPLMUnregisterHotKey(gClearTargetHotkey);
+    }
+    if (gMenu) {
+        XPLMDestroyMenu(gMenu);
     }
     if (gTerrainProbe) {
         XPLMDestroyProbe(gTerrainProbe);
@@ -408,6 +423,17 @@ void ClearTargetHotkey(void* refcon) {
     XPLMDebugString("JTAC: Missile target cleared\n");
 }
 
+// Menu handler callback
+void JTACMenuHandler(void* inMenuRef, void* inItemRef) {
+    if ((intptr_t)inItemRef == 1) { // Toggle Window menu item
+        if (gWindow) {
+            int isVisible = XPLMGetWindowIsVisible(gWindow);
+            XPLMSetWindowIsVisible(gWindow, !isVisible);
+            XPLMDebugString(isVisible ? "JTAC: Window hidden\n" : "JTAC: Window shown\n");
+        }
+    }
+}
+
 // Display window draw function
 void DrawWindow(XPLMWindowID inWindowID, void* inRefcon) {
     int left, top, right, bottom;
@@ -475,6 +501,9 @@ void DrawWindow(XPLMWindowID inWindowID, void* inRefcon) {
     
     snprintf(buffer, sizeof(buffer), "Press Ctrl+C to clear missile target");
     XPLMDrawString(gray, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+    
+    snprintf(buffer, sizeof(buffer), "Use Plugins > JTAC > Toggle Window to show/hide");
+    XPLMDrawString(gray, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
 }
 
 // Create window
@@ -485,7 +514,7 @@ void CreateJTACWindow() {
     params.top = 600;
     params.right = 400;
     params.bottom = 400;
-    params.visible = 1;
+    params.visible = 0;
     params.drawWindowFunc = DrawWindow;
     params.handleMouseClickFunc = NULL;
     params.handleKeyFunc = NULL;
