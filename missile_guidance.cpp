@@ -12,22 +12,22 @@
 #define DEG_TO_RAD (M_PI / 180.0)
 #define RAD_TO_DEG (180.0 / M_PI)
 
-// Missile guidance data refs
-static XPLMDataRef gMissileX[25];
-static XPLMDataRef gMissileY[25];
-static XPLMDataRef gMissileZ[25];
-static XPLMDataRef gMissileVX[25];
-static XPLMDataRef gMissileVY[25];
-static XPLMDataRef gMissileVZ[25];
-static XPLMDataRef gMissileQ1[25]; // Quaternion components
-static XPLMDataRef gMissileQ2[25];
-static XPLMDataRef gMissileQ3[25];
-static XPLMDataRef gMissileQ4[25];
-static XPLMDataRef gMissileThrustRat[25];
-static XPLMDataRef gMissileTargetLat[25];
-static XPLMDataRef gMissileTargetLon[25];
-static XPLMDataRef gMissileTargetH[25];
-static XPLMDataRef gMissileType[25];
+// Missile guidance data refs (array datarefs)
+static XPLMDataRef gMissileX;
+static XPLMDataRef gMissileY;
+static XPLMDataRef gMissileZ;
+static XPLMDataRef gMissileVX;
+static XPLMDataRef gMissileVY;
+static XPLMDataRef gMissileVZ;
+static XPLMDataRef gMissileQ1; // Quaternion components
+static XPLMDataRef gMissileQ2;
+static XPLMDataRef gMissileQ3;
+static XPLMDataRef gMissileQ4;
+static XPLMDataRef gMissileThrustRat;
+static XPLMDataRef gMissileTargetLat;
+static XPLMDataRef gMissileTargetLon;
+static XPLMDataRef gMissileTargetH;
+static XPLMDataRef gMissileType;
 static XPLMDataRef gWeaponCount;
 
 // Aircraft data refs
@@ -124,61 +124,22 @@ bool InitializeMissileGuidance() {
         return false;
     }
     
-    // Initialize missile data refs for all 25 possible weapons
-    for (int i = 0; i < 25; i++) {
-        char datarefName[256];
-        
-        // Position data refs
-        snprintf(datarefName, sizeof(datarefName), "sim/weapons/x[%d]", i);
-        gMissileX[i] = XPLMFindDataRef(datarefName);
-        
-        snprintf(datarefName, sizeof(datarefName), "sim/weapons/y[%d]", i);
-        gMissileY[i] = XPLMFindDataRef(datarefName);
-        
-        snprintf(datarefName, sizeof(datarefName), "sim/weapons/z[%d]", i);
-        gMissileZ[i] = XPLMFindDataRef(datarefName);
-        
-        // Velocity data refs
-        snprintf(datarefName, sizeof(datarefName), "sim/weapons/vx[%d]", i);
-        gMissileVX[i] = XPLMFindDataRef(datarefName);
-        
-        snprintf(datarefName, sizeof(datarefName), "sim/weapons/vy[%d]", i);
-        gMissileVY[i] = XPLMFindDataRef(datarefName);
-        
-        snprintf(datarefName, sizeof(datarefName), "sim/weapons/vz[%d]", i);
-        gMissileVZ[i] = XPLMFindDataRef(datarefName);
-        
-        // Quaternion orientation data refs
-        snprintf(datarefName, sizeof(datarefName), "sim/weapons/q1[%d]", i);
-        gMissileQ1[i] = XPLMFindDataRef(datarefName);
-        
-        snprintf(datarefName, sizeof(datarefName), "sim/weapons/q2[%d]", i);
-        gMissileQ2[i] = XPLMFindDataRef(datarefName);
-        
-        snprintf(datarefName, sizeof(datarefName), "sim/weapons/q3[%d]", i);
-        gMissileQ3[i] = XPLMFindDataRef(datarefName);
-        
-        snprintf(datarefName, sizeof(datarefName), "sim/weapons/q4[%d]", i);
-        gMissileQ4[i] = XPLMFindDataRef(datarefName);
-        
-        // Thrust control
-        snprintf(datarefName, sizeof(datarefName), "sim/weapons/shell/thrust_rat[%d]", i);
-        gMissileThrustRat[i] = XPLMFindDataRef(datarefName);
-        
-        // Target coordinates
-        snprintf(datarefName, sizeof(datarefName), "sim/weapons/targ_lat[%d]", i);
-        gMissileTargetLat[i] = XPLMFindDataRef(datarefName);
-        
-        snprintf(datarefName, sizeof(datarefName), "sim/weapons/targ_lon[%d]", i);
-        gMissileTargetLon[i] = XPLMFindDataRef(datarefName);
-        
-        snprintf(datarefName, sizeof(datarefName), "sim/weapons/targ_h[%d]", i);
-        gMissileTargetH[i] = XPLMFindDataRef(datarefName);
-        
-        // Weapon type
-        snprintf(datarefName, sizeof(datarefName), "sim/weapons/type[%d]", i);
-        gMissileType[i] = XPLMFindDataRef(datarefName);
-    }
+    // Initialize missile data refs (array datarefs)
+    gMissileX = XPLMFindDataRef("sim/weapons/x");
+    gMissileY = XPLMFindDataRef("sim/weapons/y");
+    gMissileZ = XPLMFindDataRef("sim/weapons/z");
+    gMissileVX = XPLMFindDataRef("sim/weapons/vx");
+    gMissileVY = XPLMFindDataRef("sim/weapons/vy");
+    gMissileVZ = XPLMFindDataRef("sim/weapons/vz");
+    gMissileQ1 = XPLMFindDataRef("sim/weapons/q1");
+    gMissileQ2 = XPLMFindDataRef("sim/weapons/q2");
+    gMissileQ3 = XPLMFindDataRef("sim/weapons/q3");
+    gMissileQ4 = XPLMFindDataRef("sim/weapons/q4");
+    gMissileThrustRat = XPLMFindDataRef("sim/weapons/shell/thrust_rat");
+    gMissileTargetLat = XPLMFindDataRef("sim/weapons/targ_lat");
+    gMissileTargetLon = XPLMFindDataRef("sim/weapons/targ_lon");
+    gMissileTargetH = XPLMFindDataRef("sim/weapons/targ_h");
+    gMissileType = XPLMFindDataRef("sim/weapons/type");
     
     // Aircraft position
     gPlaneLatitude = XPLMFindDataRef("sim/flightmodel/position/latitude");
@@ -209,17 +170,18 @@ void SetMissileTarget(const TargetCoords& target) {
 
 // Find the next available missile to guide
 int FindAvailableMissile() {
-    if (!gWeaponCount) return -1;
+    if (!gWeaponCount || !gMissileType) return -1;
     
     int weaponCount = XPLMGetDatai(gWeaponCount);
     
-    for (int i = 0; i < weaponCount && i < 25; i++) {
-        if (gMissileType[i] && gMissileX[i] && gMissileY[i] && gMissileZ[i]) {
-            int weaponType = XPLMGetDatai(gMissileType[i]);
-            // Check if it's a missile type (you may need to adjust this based on X-Plane weapon types)
-            if (weaponType > 0) {
-                return i;
-            }
+    // Get weapon types array
+    int weaponTypes[25];
+    int numTypes = XPLMGetDatavi(gMissileType, weaponTypes, 0, weaponCount < 25 ? weaponCount : 25);
+    
+    for (int i = 0; i < numTypes; i++) {
+        // Check if it's a missile type (you may need to adjust this based on X-Plane weapon types)
+        if (weaponTypes[i] > 0) {
+            return i;
         }
     }
     
@@ -230,15 +192,23 @@ int FindAvailableMissile() {
 void CalculateProportionalNavigation(int missileIndex, float deltaTime) {
     if (!gGuidanceTarget.valid || missileIndex < 0 || missileIndex >= 25) return;
     
-    // Get missile current position
-    float missileX = XPLMGetDataf(gMissileX[missileIndex]);
-    float missileY = XPLMGetDataf(gMissileY[missileIndex]);
-    float missileZ = XPLMGetDataf(gMissileZ[missileIndex]);
+    // Get missile current position using array access
+    float missilePos[3];
+    XPLMGetDatavf(gMissileX, &missilePos[0], missileIndex, 1);
+    XPLMGetDatavf(gMissileY, &missilePos[1], missileIndex, 1);
+    XPLMGetDatavf(gMissileZ, &missilePos[2], missileIndex, 1);
+    float missileX = missilePos[0];
+    float missileY = missilePos[1];
+    float missileZ = missilePos[2];
     
-    // Get missile current velocity
-    float missileVX = XPLMGetDataf(gMissileVX[missileIndex]);
-    float missileVY = XPLMGetDataf(gMissileVY[missileIndex]);
-    float missileVZ = XPLMGetDataf(gMissileVZ[missileIndex]);
+    // Get missile current velocity using array access
+    float missileVel[3];
+    XPLMGetDatavf(gMissileVX, &missileVel[0], missileIndex, 1);
+    XPLMGetDatavf(gMissileVY, &missileVel[1], missileIndex, 1);
+    XPLMGetDatavf(gMissileVZ, &missileVel[2], missileIndex, 1);
+    float missileVX = missileVel[0];
+    float missileVY = missileVel[1];
+    float missileVZ = missileVel[2];
     
     // Calculate relative position to target
     float relativeX = gGuidanceTarget.localX - missileX;
@@ -250,7 +220,8 @@ void CalculateProportionalNavigation(int missileIndex, float deltaTime) {
     
     if (distance < 10.0f) {
         // Close to target, reduce thrust
-        XPLMSetDataf(gMissileThrustRat[missileIndex], 0.1f);
+        float thrustVal = 0.1f;
+        XPLMSetDatavf(gMissileThrustRat, &thrustVal, missileIndex, 1);
         return;
     }
     
@@ -308,40 +279,45 @@ void CalculateProportionalNavigation(int missileIndex, float deltaTime) {
     float deltaVY = desiredVY - missileVY;
     float deltaVZ = desiredVZ - missileVZ;
     
-    // Apply velocity correction (simple proportional control)
+    // Apply velocity correction (simple proportional control) using array access
     float correctionGain = 0.1f;
-    XPLMSetDataf(gMissileVX[missileIndex], missileVX + deltaVX * correctionGain);
-    XPLMSetDataf(gMissileVY[missileIndex], missileVY + deltaVY * correctionGain);
-    XPLMSetDataf(gMissileVZ[missileIndex], missileVZ + deltaVZ * correctionGain);
+    float newVX = missileVX + deltaVX * correctionGain;
+    float newVY = missileVY + deltaVY * correctionGain;
+    float newVZ = missileVZ + deltaVZ * correctionGain;
+    
+    XPLMSetDatavf(gMissileVX, &newVX, missileIndex, 1);
+    XPLMSetDatavf(gMissileVY, &newVY, missileIndex, 1);
+    XPLMSetDatavf(gMissileVZ, &newVZ, missileIndex, 1);
     
     // Update missile orientation quaternion to point toward target
-    if (gMissileQ1[missileIndex] && gMissileQ2[missileIndex] && 
-        gMissileQ3[missileIndex] && gMissileQ4[missileIndex]) {
+    if (gMissileQ1 && gMissileQ2 && gMissileQ3 && gMissileQ4) {
         
         float q1, q2, q3, q4;
         QuaternionFromDirectionVector(desiredVX, desiredVY, desiredVZ, &q1, &q2, &q3, &q4);
         
+        // Get current quaternion using array access
+        float currentQ[4];
+        XPLMGetDatavf(gMissileQ1, &currentQ[0], missileIndex, 1);
+        XPLMGetDatavf(gMissileQ2, &currentQ[1], missileIndex, 1);
+        XPLMGetDatavf(gMissileQ3, &currentQ[2], missileIndex, 1);
+        XPLMGetDatavf(gMissileQ4, &currentQ[3], missileIndex, 1);
+        
         // Smoothly interpolate toward desired orientation
-        float currentQ1 = XPLMGetDataf(gMissileQ1[missileIndex]);
-        float currentQ2 = XPLMGetDataf(gMissileQ2[missileIndex]);
-        float currentQ3 = XPLMGetDataf(gMissileQ3[missileIndex]);
-        float currentQ4 = XPLMGetDataf(gMissileQ4[missileIndex]);
-        
         float orientationGain = 0.2f; // Smooth orientation changes
-        float newQ1 = currentQ1 + (q1 - currentQ1) * orientationGain;
-        float newQ2 = currentQ2 + (q2 - currentQ2) * orientationGain;
-        float newQ3 = currentQ3 + (q3 - currentQ3) * orientationGain;
-        float newQ4 = currentQ4 + (q4 - currentQ4) * orientationGain;
+        float newQ1 = currentQ[0] + (q1 - currentQ[0]) * orientationGain;
+        float newQ2 = currentQ[1] + (q2 - currentQ[1]) * orientationGain;
+        float newQ3 = currentQ[2] + (q3 - currentQ[2]) * orientationGain;
+        float newQ4 = currentQ[3] + (q4 - currentQ[3]) * orientationGain;
         
-        // Normalize and set new orientation
+        // Normalize and set new orientation using array access
         NormalizeQuaternion(&newQ1, &newQ2, &newQ3, &newQ4);
-        XPLMSetDataf(gMissileQ1[missileIndex], newQ1);
-        XPLMSetDataf(gMissileQ2[missileIndex], newQ2);
-        XPLMSetDataf(gMissileQ3[missileIndex], newQ3);
-        XPLMSetDataf(gMissileQ4[missileIndex], newQ4);
+        XPLMSetDatavf(gMissileQ1, &newQ1, missileIndex, 1);
+        XPLMSetDatavf(gMissileQ2, &newQ2, missileIndex, 1);
+        XPLMSetDatavf(gMissileQ3, &newQ3, missileIndex, 1);
+        XPLMSetDatavf(gMissileQ4, &newQ4, missileIndex, 1);
     }
     
-    // Set thrust based on distance
+    // Set thrust based on distance using array access
     float thrustRatio = 1.0f;
     if (distance < 1000.0f) {
         thrustRatio = 0.5f; // Reduce thrust when close
@@ -351,7 +327,7 @@ void CalculateProportionalNavigation(int missileIndex, float deltaTime) {
         thrustRatio = 0.5f + 0.5f * (distance - 1000.0f) / 4000.0f;
     }
     
-    XPLMSetDataf(gMissileThrustRat[missileIndex], thrustRatio);
+    XPLMSetDatavf(gMissileThrustRat, &thrustRatio, missileIndex, 1);
 }
 
 // Flight loop callback for missile guidance
@@ -369,11 +345,15 @@ float MissileGuidanceCallback(float inElapsedSinceLastCall, float inElapsedTimeS
             return 0.1f; // No missiles available
         }
         
-        // Set target coordinates in weapon system
-        if (gMissileTargetLat[gActiveMissileIndex] && gMissileTargetLon[gActiveMissileIndex] && gMissileTargetH[gActiveMissileIndex]) {
-            XPLMSetDataf(gMissileTargetLat[gActiveMissileIndex], (float)gGuidanceTarget.latitude);
-            XPLMSetDataf(gMissileTargetLon[gActiveMissileIndex], (float)gGuidanceTarget.longitude);
-            XPLMSetDataf(gMissileTargetH[gActiveMissileIndex], (float)gGuidanceTarget.elevation);
+        // Set target coordinates in weapon system using array access
+        if (gMissileTargetLat && gMissileTargetLon && gMissileTargetH) {
+            float targetLat = (float)gGuidanceTarget.latitude;
+            float targetLon = (float)gGuidanceTarget.longitude;
+            float targetElev = (float)gGuidanceTarget.elevation;
+            
+            XPLMSetDatavf(gMissileTargetLat, &targetLat, gActiveMissileIndex, 1);
+            XPLMSetDatavf(gMissileTargetLon, &targetLon, gActiveMissileIndex, 1);
+            XPLMSetDatavf(gMissileTargetH, &targetElev, gActiveMissileIndex, 1);
         }
         
         char buffer[128];
