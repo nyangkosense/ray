@@ -9,6 +9,7 @@
 #include "XPLMPlugin.h"
 #include "XPLMDisplay.h"
 #include "XPLMProcessing.h"
+#include "missile_guidance.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -37,9 +38,11 @@ static XPLMDataRef gViewPitch = NULL;
 
 // Hotkey handling
 static XPLMHotKeyID gLaserHotkey = NULL;
+static XPLMHotKeyID gClearTargetHotkey = NULL;
 
 // Function declarations
 void LaserDesignationHotkey(void* refcon);
+void ClearTargetHotkey(void* refcon);
 
 // Terrain probe handle
 static XPLMProbeRef gTerrainProbe = NULL;
@@ -88,12 +91,24 @@ PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc) {
     // Register hotkey for laser designation (Ctrl+L)
     gLaserHotkey = XPLMRegisterHotKey(XPLM_VK_L, xplm_DownFlag | xplm_ControlFlag, "Laser Target Designation", LaserDesignationHotkey, NULL);
     
+    // Register hotkey for clearing target (Ctrl+C)
+    gClearTargetHotkey = XPLMRegisterHotKey(XPLM_VK_C, xplm_DownFlag | xplm_ControlFlag, "Clear Missile Target", ClearTargetHotkey, NULL);
+    
+    // Initialize missile guidance system
+    if (!InitMissileGuidance()) {
+        XPLMDebugString("JTAC: Warning - Missile guidance system failed to initialize\n");
+    }
+    
     return 1;
 }
 
 PLUGIN_API void XPluginStop(void) {
+    ShutdownMissileGuidance();
     if (gLaserHotkey) {
         XPLMUnregisterHotKey(gLaserHotkey);
+    }
+    if (gClearTargetHotkey) {
+        XPLMUnregisterHotKey(gClearTargetHotkey);
     }
     if (gTerrainProbe) {
         XPLMDestroyProbe(gTerrainProbe);
@@ -375,12 +390,22 @@ void LaserDesignationHotkey(void* refcon) {
         // Perform laser designation at screen center
         if (DesignateLaser(centerX, centerY, &gLastTarget)) {
             XPLMDebugString("JTAC: Target designated successfully at crosshair\n");
+            
+            // Send target to missile guidance system
+            SetJTACTarget(gLastTarget.latitude, gLastTarget.longitude, gLastTarget.elevation,
+                         gLastTarget.localX, gLastTarget.localY, gLastTarget.localZ);
         } else {
             XPLMDebugString("JTAC: No terrain intersection found at crosshair\n");
         }
     } else {
         XPLMDebugString("JTAC: Could not get screen dimensions\n");
     }
+}
+
+// Clear target hotkey callback (Ctrl+C)
+void ClearTargetHotkey(void* refcon) {
+    ClearMissileTarget();
+    XPLMDebugString("JTAC: Missile target cleared\n");
 }
 
 // Display window draw function
@@ -446,6 +471,9 @@ void DrawWindow(XPLMWindowID inWindowID, void* inRefcon) {
     line++;
     snprintf(buffer, sizeof(buffer), "Press Ctrl+L to designate target at crosshair");
     float gray[] = {0.78f, 0.78f, 0.78f};
+    XPLMDrawString(gray, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+    
+    snprintf(buffer, sizeof(buffer), "Press Ctrl+C to clear missile target");
     XPLMDrawString(gray, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
 }
 

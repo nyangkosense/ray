@@ -29,7 +29,7 @@ LDFLAGS += $(LIBS)
 LDFLAGS += -lopengl32 -lgdi32 -lm
 
 # Source files
-SOURCES = probe.cpp
+SOURCES = probe.cpp missile_guidance.cpp
 
 # Object files
 OBJECTS = $(SOURCES:.cpp=.o)
