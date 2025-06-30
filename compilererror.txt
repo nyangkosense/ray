@@ -1,0 +1,358 @@
+x86_64-w64-mingw32-g++ -std=c++11 -Wall -O2 -fPIC -DXPLM200=1 -DXPLM210=1 -DXPLM300=1 -DXPLM301=1 -DXPLM302=1 -DXPLM400=1 -ISDK/CHeaders/XPLM -ISDK/CHeaders/Widgets -I. -DIBM=1 -DWIN32=1 -D_WIN32=1 -c probe.cpp -o probe.o
+probe.cpp:421:19: error: macro "CreateWindowA" requires 11 arguments, but only 1 given
+  421 | void CreateWindow() {
+      |                   ^
+In file included from /usr/share/mingw-w64/include/windows.h:72,
+                 from SDK/CHeaders/XPLM/XPLMDefs.h:32,
+                 from SDK/CHeaders/XPLM/XPLMScenery.h:18,
+                 from probe.cpp:1:
+/usr/share/mingw-w64/include/winuser.h:2206:9: note: macro "CreateWindowA" defined here
+ 2206 | #define CreateWindowA(lpClassName,lpWindowName,dwStyle,x,y,nWidth,nHeight,hWndParent,hMenu,hInstance,lpParam) CreateWindowExA((DWORD)0,lpClassName,lpWindowName,dwStyle,x,y,nWidth,nHeight,hWndParent,hMenu,hInstance,lpParam)
+      |         ^~~~~~~~~~~~~
+probe.cpp:445:26: error: macro "CreateWindowA" requires 11 arguments, but only 1 given
+  445 |             CreateWindow();
+      |                          ^
+/usr/share/mingw-w64/include/winuser.h:2206:9: note: macro "CreateWindowA" defined here
+ 2206 | #define CreateWindowA(lpClassName,lpWindowName,dwStyle,x,y,nWidth,nHeight,hWndParent,hMenu,hInstance,lpParam) CreateWindowExA((DWORD)0,lpClassName,lpWindowName,dwStyle,x,y,nWidth,nHeight,hWndParent,hMenu,hInstance,lpParam)
+      |         ^~~~~~~~~~~~~
+probe.cpp: In function ‘void CalculateTargetInfo(const TargetCoords*, float*, float*, float*)’:
+probe.cpp:57:21: error: ‘M_PI’ was not declared in this scope
+   57 | #define DEG_TO_RAD (M_PI / 180.0)
+      |                     ^~~~
+probe.cpp:301:55: note: in expansion of macro ‘DEG_TO_RAD’
+  301 |     double dLon = (target->longitude - aircraftLon) * DEG_TO_RAD;
+      |                                                       ^~~~~~~~~~
+probe.cpp: In function ‘void DrawWindow(XPLMWindowID, void*)’:
+probe.cpp:374:20: error: invalid conversion from ‘int’ to ‘float*’ [-fpermissive]
+  374 |     XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                    ^~~
+      |                    |
+      |                    int
+probe.cpp:374:40: error: invalid conversion from ‘int’ to ‘const char*’ [-fpermissive]
+  374 |     XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                   ~~~~~^~~~
+      |                                        |
+      |                                        int
+probe.cpp:374:55: error: invalid conversion from ‘int’ to ‘int*’ [-fpermissive]
+  374 |     XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                              ~~~~~~~~~^~~~~~~~~~~~~~~
+      |                                                       |
+      |                                                       int
+probe.cpp:374:72: error: invalid conversion from ‘char*’ to ‘XPLMFontID’ {aka ‘int’} [-fpermissive]
+  374 |     XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                                                        ^~~~~~
+      |                                                                        |
+      |                                                                        char*
+probe.cpp:374:19: error: too many arguments to function ‘void XPLMDrawString(float*, int, int, const char*, int*, XPLMFontID)’
+  374 |     XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |     ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from probe.cpp:2:
+SDK/CHeaders/XPLM/XPLMGraphics.h:372:21: note: declared here
+  372 | XPLM_API void       XPLMDrawString(
+      |                     ^~~~~~~~~~~~~~
+probe.cpp:377:20: error: invalid conversion from ‘int’ to ‘float*’ [-fpermissive]
+  377 |     XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                    ^~~
+      |                    |
+      |                    int
+probe.cpp:377:40: error: invalid conversion from ‘int’ to ‘const char*’ [-fpermissive]
+  377 |     XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                   ~~~~~^~~~
+      |                                        |
+      |                                        int
+probe.cpp:377:55: error: invalid conversion from ‘int’ to ‘int*’ [-fpermissive]
+  377 |     XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                              ~~~~~~~~~^~~~~~~~~~~~~~~
+      |                                                       |
+      |                                                       int
+probe.cpp:377:72: error: invalid conversion from ‘char*’ to ‘XPLMFontID’ {aka ‘int’} [-fpermissive]
+  377 |     XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                                                        ^~~~~~
+      |                                                                        |
+      |                                                                        char*
+probe.cpp:377:19: error: too many arguments to function ‘void XPLMDrawString(float*, int, int, const char*, int*, XPLMFontID)’
+  377 |     XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |     ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+SDK/CHeaders/XPLM/XPLMGraphics.h:372:21: note: declared here
+  372 | XPLM_API void       XPLMDrawString(
+      |                     ^~~~~~~~~~~~~~
+probe.cpp:384:24: error: invalid conversion from ‘int’ to ‘float*’ [-fpermissive]
+  384 |         XPLMDrawString(255, 255, 0, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                        ^~~
+      |                        |
+      |                        int
+probe.cpp:384:42: error: invalid conversion from ‘int’ to ‘const char*’ [-fpermissive]
+  384 |         XPLMDrawString(255, 255, 0, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                     ~~~~~^~~~
+      |                                          |
+      |                                          int
+probe.cpp:384:57: error: invalid conversion from ‘int’ to ‘int*’ [-fpermissive]
+  384 |         XPLMDrawString(255, 255, 0, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                                ~~~~~~~~~^~~~~~~~~~~~~~~
+      |                                                         |
+      |                                                         int
+probe.cpp:384:74: error: invalid conversion from ‘char*’ to ‘XPLMFontID’ {aka ‘int’} [-fpermissive]
+  384 |         XPLMDrawString(255, 255, 0, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                                                          ^~~~~~
+      |                                                                          |
+      |                                                                          char*
+probe.cpp:384:23: error: too many arguments to function ‘void XPLMDrawString(float*, int, int, const char*, int*, XPLMFontID)’
+  384 |         XPLMDrawString(255, 255, 0, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |         ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+SDK/CHeaders/XPLM/XPLMGraphics.h:372:21: note: declared here
+  372 | XPLM_API void       XPLMDrawString(
+      |                     ^~~~~~~~~~~~~~
+probe.cpp:390:24: error: invalid conversion from ‘int’ to ‘float*’ [-fpermissive]
+  390 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                        ^~~
+      |                        |
+      |                        int
+probe.cpp:390:44: error: invalid conversion from ‘int’ to ‘const char*’ [-fpermissive]
+  390 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                       ~~~~~^~~~
+      |                                            |
+      |                                            int
+probe.cpp:390:59: error: invalid conversion from ‘int’ to ‘int*’ [-fpermissive]
+  390 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                                  ~~~~~~~~~^~~~~~~~~~~~~~~
+      |                                                           |
+      |                                                           int
+probe.cpp:390:76: error: invalid conversion from ‘char*’ to ‘XPLMFontID’ {aka ‘int’} [-fpermissive]
+  390 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                                                            ^~~~~~
+      |                                                                            |
+      |                                                                            char*
+probe.cpp:390:23: error: too many arguments to function ‘void XPLMDrawString(float*, int, int, const char*, int*, XPLMFontID)’
+  390 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |         ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+SDK/CHeaders/XPLM/XPLMGraphics.h:372:21: note: declared here
+  372 | XPLM_API void       XPLMDrawString(
+      |                     ^~~~~~~~~~~~~~
+probe.cpp:394:24: error: invalid conversion from ‘int’ to ‘float*’ [-fpermissive]
+  394 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                        ^~~
+      |                        |
+      |                        int
+probe.cpp:394:44: error: invalid conversion from ‘int’ to ‘const char*’ [-fpermissive]
+  394 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                       ~~~~~^~~~
+      |                                            |
+      |                                            int
+probe.cpp:394:59: error: invalid conversion from ‘int’ to ‘int*’ [-fpermissive]
+  394 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                                  ~~~~~~~~~^~~~~~~~~~~~~~~
+      |                                                           |
+      |                                                           int
+probe.cpp:394:76: error: invalid conversion from ‘char*’ to ‘XPLMFontID’ {aka ‘int’} [-fpermissive]
+  394 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                                                            ^~~~~~
+      |                                                                            |
+      |                                                                            char*
+probe.cpp:394:23: error: too many arguments to function ‘void XPLMDrawString(float*, int, int, const char*, int*, XPLMFontID)’
+  394 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |         ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+SDK/CHeaders/XPLM/XPLMGraphics.h:372:21: note: declared here
+  372 | XPLM_API void       XPLMDrawString(
+      |                     ^~~~~~~~~~~~~~
+probe.cpp:398:24: error: invalid conversion from ‘int’ to ‘float*’ [-fpermissive]
+  398 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                        ^~~
+      |                        |
+      |                        int
+probe.cpp:398:44: error: invalid conversion from ‘int’ to ‘const char*’ [-fpermissive]
+  398 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                       ~~~~~^~~~
+      |                                            |
+      |                                            int
+probe.cpp:398:59: error: invalid conversion from ‘int’ to ‘int*’ [-fpermissive]
+  398 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                                  ~~~~~~~~~^~~~~~~~~~~~~~~
+      |                                                           |
+      |                                                           int
+probe.cpp:398:76: error: invalid conversion from ‘char*’ to ‘XPLMFontID’ {aka ‘int’} [-fpermissive]
+  398 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                                                            ^~~~~~
+      |                                                                            |
+      |                                                                            char*
+probe.cpp:398:23: error: too many arguments to function ‘void XPLMDrawString(float*, int, int, const char*, int*, XPLMFontID)’
+  398 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |         ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+SDK/CHeaders/XPLM/XPLMGraphics.h:372:21: note: declared here
+  372 | XPLM_API void       XPLMDrawString(
+      |                     ^~~~~~~~~~~~~~
+probe.cpp:405:24: error: invalid conversion from ‘int’ to ‘float*’ [-fpermissive]
+  405 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                        ^~~
+      |                        |
+      |                        int
+probe.cpp:405:44: error: invalid conversion from ‘int’ to ‘const char*’ [-fpermissive]
+  405 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                       ~~~~~^~~~
+      |                                            |
+      |                                            int
+probe.cpp:405:59: error: invalid conversion from ‘int’ to ‘int*’ [-fpermissive]
+  405 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                                  ~~~~~~~~~^~~~~~~~~~~~~~~
+      |                                                           |
+      |                                                           int
+probe.cpp:405:76: error: invalid conversion from ‘char*’ to ‘XPLMFontID’ {aka ‘int’} [-fpermissive]
+  405 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                                                            ^~~~~~
+      |                                                                            |
+      |                                                                            char*
+probe.cpp:405:23: error: too many arguments to function ‘void XPLMDrawString(float*, int, int, const char*, int*, XPLMFontID)’
+  405 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |         ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+SDK/CHeaders/XPLM/XPLMGraphics.h:372:21: note: declared here
+  372 | XPLM_API void       XPLMDrawString(
+      |                     ^~~~~~~~~~~~~~
+probe.cpp:408:24: error: invalid conversion from ‘int’ to ‘float*’ [-fpermissive]
+  408 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                        ^~~
+      |                        |
+      |                        int
+probe.cpp:408:44: error: invalid conversion from ‘int’ to ‘const char*’ [-fpermissive]
+  408 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                       ~~~~~^~~~
+      |                                            |
+      |                                            int
+probe.cpp:408:59: error: invalid conversion from ‘int’ to ‘int*’ [-fpermissive]
+  408 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                                  ~~~~~~~~~^~~~~~~~~~~~~~~
+      |                                                           |
+      |                                                           int
+probe.cpp:408:76: error: invalid conversion from ‘char*’ to ‘XPLMFontID’ {aka ‘int’} [-fpermissive]
+  408 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                                                            ^~~~~~
+      |                                                                            |
+      |                                                                            char*
+probe.cpp:408:23: error: too many arguments to function ‘void XPLMDrawString(float*, int, int, const char*, int*, XPLMFontID)’
+  408 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |         ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+SDK/CHeaders/XPLM/XPLMGraphics.h:372:21: note: declared here
+  372 | XPLM_API void       XPLMDrawString(
+      |                     ^~~~~~~~~~~~~~
+probe.cpp:411:24: error: invalid conversion from ‘int’ to ‘float*’ [-fpermissive]
+  411 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                        ^~~
+      |                        |
+      |                        int
+probe.cpp:411:44: error: invalid conversion from ‘int’ to ‘const char*’ [-fpermissive]
+  411 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                       ~~~~~^~~~
+      |                                            |
+      |                                            int
+probe.cpp:411:59: error: invalid conversion from ‘int’ to ‘int*’ [-fpermissive]
+  411 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                                  ~~~~~~~~~^~~~~~~~~~~~~~~
+      |                                                           |
+      |                                                           int
+probe.cpp:411:76: error: invalid conversion from ‘char*’ to ‘XPLMFontID’ {aka ‘int’} [-fpermissive]
+  411 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                                                            ^~~~~~
+      |                                                                            |
+      |                                                                            char*
+probe.cpp:411:23: error: too many arguments to function ‘void XPLMDrawString(float*, int, int, const char*, int*, XPLMFontID)’
+  411 |         XPLMDrawString(255, 255, 255, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |         ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+SDK/CHeaders/XPLM/XPLMGraphics.h:372:21: note: declared here
+  372 | XPLM_API void       XPLMDrawString(
+      |                     ^~~~~~~~~~~~~~
+probe.cpp:417:20: error: invalid conversion from ‘int’ to ‘float*’ [-fpermissive]
+  417 |     XPLMDrawString(200, 200, 200, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                    ^~~
+      |                    |
+      |                    int
+probe.cpp:417:40: error: invalid conversion from ‘int’ to ‘const char*’ [-fpermissive]
+  417 |     XPLMDrawString(200, 200, 200, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                   ~~~~~^~~~
+      |                                        |
+      |                                        int
+probe.cpp:417:55: error: invalid conversion from ‘int’ to ‘int*’ [-fpermissive]
+  417 |     XPLMDrawString(200, 200, 200, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                              ~~~~~~~~~^~~~~~~~~~~~~~~
+      |                                                       |
+      |                                                       int
+probe.cpp:417:72: error: invalid conversion from ‘char*’ to ‘XPLMFontID’ {aka ‘int’} [-fpermissive]
+  417 |     XPLMDrawString(200, 200, 200, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |                                                                        ^~~~~~
+      |                                                                        |
+      |                                                                        char*
+probe.cpp:417:19: error: too many arguments to function ‘void XPLMDrawString(float*, int, int, const char*, int*, XPLMFontID)’
+  417 |     XPLMDrawString(200, 200, 200, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
+      |     ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+SDK/CHeaders/XPLM/XPLMGraphics.h:372:21: note: declared here
+  372 | XPLM_API void       XPLMDrawString(
+      |                     ^~~~~~~~~~~~~~
+In file included from /usr/share/mingw-w64/include/winnt.h:9,
+                 from /usr/share/mingw-w64/include/minwindef.h:163,
+                 from /usr/share/mingw-w64/include/windef.h:9,
+                 from /usr/share/mingw-w64/include/windows.h:69:
+probe.cpp: At global scope:
+probe.cpp:421:6: error: variable or field ‘CreateWindowA’ declared void
+  421 | void CreateWindow() {
+      |      ^~~~~~~~~~~~
+probe.cpp:422:24: error: expected primary-expression before ‘params’
+  422 |     XPLMCreateWindow_t params;
+      |                        ^~~~~~
+probe.cpp:422:24: error: expected ‘}’ before ‘params’
+probe.cpp:421:21: note: to match this ‘{’
+  421 | void CreateWindow() {
+      |                     ^
+probe.cpp:423:5: error: ‘params’ does not name a type
+  423 |     params.structSize = sizeof(params);
+      |     ^~~~~~
+probe.cpp:424:5: error: ‘params’ does not name a type
+  424 |     params.left = 50;
+      |     ^~~~~~
+probe.cpp:425:5: error: ‘params’ does not name a type
+  425 |     params.top = 600;
+      |     ^~~~~~
+probe.cpp:426:5: error: ‘params’ does not name a type
+  426 |     params.right = 400;
+      |     ^~~~~~
+probe.cpp:427:5: error: ‘params’ does not name a type
+  427 |     params.bottom = 400;
+      |     ^~~~~~
+probe.cpp:428:5: error: ‘params’ does not name a type
+  428 |     params.visible = 1;
+      |     ^~~~~~
+probe.cpp:429:5: error: ‘params’ does not name a type
+  429 |     params.drawWindowFunc = DrawWindow;
+      |     ^~~~~~
+probe.cpp:430:5: error: ‘params’ does not name a type
+  430 |     params.handleMouseClickFunc = MouseClickHandler;
+      |     ^~~~~~
+probe.cpp:431:5: error: ‘params’ does not name a type
+  431 |     params.handleKeyFunc = NULL;
+      |     ^~~~~~
+probe.cpp:432:5: error: ‘params’ does not name a type
+  432 |     params.handleCursorFunc = NULL;
+      |     ^~~~~~
+probe.cpp:433:5: error: ‘params’ does not name a type
+  433 |     params.handleMouseWheelFunc = NULL;
+      |     ^~~~~~
+probe.cpp:434:5: error: ‘params’ does not name a type
+  434 |     params.refcon = NULL;
+      |     ^~~~~~
+probe.cpp:435:5: error: ‘params’ does not name a type
+  435 |     params.decorateAsFloatingWindow = xplm_WindowDecorationRoundRectangle;
+      |     ^~~~~~
+probe.cpp:436:5: error: ‘params’ does not name a type
+  436 |     params.layer = xplm_WindowLayerFloatingWindows;
+      |     ^~~~~~
+probe.cpp:437:5: error: ‘params’ does not name a type
+  437 |     params.handleRightClickFunc = NULL;
+      |     ^~~~~~
+probe.cpp:439:5: error: ‘gWindow’ does not name a type; did you mean ‘IOleWindow’?
+  439 |     gWindow = XPLMCreateWindowEx(&params);
+      |     ^~~~~~~
+      |     IOleWindow
+probe.cpp:440:1: error: expected declaration before ‘}’ token
+  440 | }
+      | ^
+probe.cpp: In function ‘void XPluginReceiveMessage(XPLMPluginID, int, void*)’:
+probe.cpp:445:13: error: ‘CreateWindowA’ was not declared in this scope
+  445 |             CreateWindow();
+      |             ^~~~~~~~~~~~
+make: *** [Makefile:51: probe.o] Error 1
