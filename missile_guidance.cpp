@@ -46,7 +46,16 @@ struct TargetCoords {
 
 static TargetCoords gGuidanceTarget = {0};
 static bool gGuidanceActive = false;
-static int gActiveMissileIndex = -1;
+
+// Track multiple active missiles
+#define MAX_MISSILES 25
+struct ActiveMissile {
+    int index;
+    bool hasTarget;
+    float lastSeenTime;
+};
+static ActiveMissile gActiveMissiles[MAX_MISSILES];
+static int gNumActiveMissiles = 0;
 
 // Quaternion utility functions
 void NormalizeQuaternion(float* q1, float* q2, float* q3, float* q4) {
@@ -168,24 +177,80 @@ void SetMissileTarget(const TargetCoords& target) {
     }
 }
 
-// Find the next available missile to guide
-int FindAvailableMissile() {
-    if (!gWeaponCount || !gMissileType) return -1;
-    
-    int weaponCount = XPLMGetDatai(gWeaponCount);
-    
-    // Get weapon types array
-    int weaponTypes[25];
-    int numTypes = XPLMGetDatavi(gMissileType, weaponTypes, 0, weaponCount < 25 ? weaponCount : 25);
-    
-    for (int i = 0; i < numTypes; i++) {
-        // Check if it's a missile type (you may need to adjust this based on X-Plane weapon types)
-        if (weaponTypes[i] > 0) {
-            return i;
+// Check if missile is already being tracked
+bool IsMissileTracked(int missileIndex) {
+    for (int i = 0; i < gNumActiveMissiles; i++) {
+        if (gActiveMissiles[i].index == missileIndex) {
+            return true;
         }
     }
+    return false;
+}
+
+// Add a missile to the active tracking list
+void AddActiveMissile(int missileIndex) {
+    if (gNumActiveMissiles >= MAX_MISSILES || IsMissileTracked(missileIndex)) {
+        return;
+    }
     
-    return -1;
+    gActiveMissiles[gNumActiveMissiles].index = missileIndex;
+    gActiveMissiles[gNumActiveMissiles].hasTarget = true;
+    gActiveMissiles[gNumActiveMissiles].lastSeenTime = 0.0f;
+    gNumActiveMissiles++;
+    
+    char buffer[128];
+    snprintf(buffer, sizeof(buffer), "Missile Guidance: Added missile %d to tracking (total: %d)\n", 
+             missileIndex, gNumActiveMissiles);
+    XPLMDebugString(buffer);
+}
+
+// Remove inactive missiles from tracking
+void CleanupInactiveMissiles() {
+    if (!gWeaponCount || !gMissileType) return;
+    
+    int weaponCount = XPLMGetDatai(gWeaponCount);
+    int weaponTypes[MAX_MISSILES];
+    int numTypes = XPLMGetDatavi(gMissileType, weaponTypes, 0, weaponCount < MAX_MISSILES ? weaponCount : MAX_MISSILES);
+    
+    // Remove missiles that are no longer active
+    for (int i = gNumActiveMissiles - 1; i >= 0; i--) {
+        int missileIndex = gActiveMissiles[i].index;
+        
+        // Check if missile still exists and is active
+        bool stillActive = false;
+        if (missileIndex < numTypes && weaponTypes[missileIndex] > 0) {
+            stillActive = true;
+        }
+        
+        if (!stillActive) {
+            // Remove this missile from tracking
+            char buffer[128];
+            snprintf(buffer, sizeof(buffer), "Missile Guidance: Removing inactive missile %d from tracking\n", missileIndex);
+            XPLMDebugString(buffer);
+            
+            // Shift remaining missiles down
+            for (int j = i; j < gNumActiveMissiles - 1; j++) {
+                gActiveMissiles[j] = gActiveMissiles[j + 1];
+            }
+            gNumActiveMissiles--;
+        }
+    }
+}
+
+// Find new missiles that need to be tracked
+void FindNewMissiles() {
+    if (!gWeaponCount || !gMissileType) return;
+    
+    int weaponCount = XPLMGetDatai(gWeaponCount);
+    int weaponTypes[MAX_MISSILES];
+    int numTypes = XPLMGetDatavi(gMissileType, weaponTypes, 0, weaponCount < MAX_MISSILES ? weaponCount : MAX_MISSILES);
+    
+    for (int i = 0; i < numTypes; i++) {
+        // Check if it's a missile type and not already tracked
+        if (weaponTypes[i] > 0 && !IsMissileTracked(i)) {
+            AddActiveMissile(i);
+        }
+    }
 }
 
 // Missile physics and guidance parameters
@@ -316,31 +381,32 @@ float MissileGuidanceCallback(float inElapsedSinceLastCall, float inElapsedTimeS
         return 0.1f; // Call again in 0.1 seconds
     }
     
-    // Find active missile if we don't have one
-    if (gActiveMissileIndex < 0) {
-        gActiveMissileIndex = FindAvailableMissile();
-        if (gActiveMissileIndex < 0) {
-            return 0.1f; // No missiles available
-        }
+    // Clean up missiles that are no longer active
+    CleanupInactiveMissiles();
+    
+    // Find any new missiles that need guidance
+    FindNewMissiles();
+    
+    // Guide all active missiles
+    for (int i = 0; i < gNumActiveMissiles; i++) {
+        int missileIndex = gActiveMissiles[i].index;
         
-        // Set target coordinates in weapon system using array access
-        if (gMissileTargetLat && gMissileTargetLon && gMissileTargetH) {
+        // Set target coordinates for this missile if it has a target
+        if (gActiveMissiles[i].hasTarget && gMissileTargetLat && gMissileTargetLon && gMissileTargetH) {
             float targetLat = (float)gGuidanceTarget.latitude;
             float targetLon = (float)gGuidanceTarget.longitude;
             float targetElev = (float)gGuidanceTarget.elevation;
             
-            XPLMSetDatavf(gMissileTargetLat, &targetLat, gActiveMissileIndex, 1);
-            XPLMSetDatavf(gMissileTargetLon, &targetLon, gActiveMissileIndex, 1);
-            XPLMSetDatavf(gMissileTargetH, &targetElev, gActiveMissileIndex, 1);
+            XPLMSetDatavf(gMissileTargetLat, &targetLat, missileIndex, 1);
+            XPLMSetDatavf(gMissileTargetLon, &targetLon, missileIndex, 1);
+            XPLMSetDatavf(gMissileTargetH, &targetElev, missileIndex, 1);
         }
         
-        char buffer[128];
-        snprintf(buffer, sizeof(buffer), "Missile Guidance: Guiding missile %d to target\n", gActiveMissileIndex);
-        XPLMDebugString(buffer);
+        // Apply smooth guidance to this missile
+        if (gActiveMissiles[i].hasTarget) {
+            CalculateSmoothGuidance(missileIndex, inElapsedSinceLastCall);
+        }
     }
-    
-    // Apply smooth guidance
-    CalculateSmoothGuidance(gActiveMissileIndex, inElapsedSinceLastCall);
     
     return 0.05f; // Call again in 0.05 seconds for responsive guidance
 }
@@ -367,12 +433,19 @@ extern "C" {
         target.valid = true;
         
         SetMissileTarget(target);
-        gActiveMissileIndex = -1; // Reset to find new missile
+        
+        // Set target for all currently tracked missiles
+        for (int i = 0; i < gNumActiveMissiles; i++) {
+            gActiveMissiles[i].hasTarget = true;
+        }
     }
     
     void ClearMissileTarget() {
         gGuidanceActive = false;
-        gActiveMissileIndex = -1;
-        XPLMDebugString("Missile Guidance: Target cleared\n");
+        
+        // Clear all tracked missiles
+        gNumActiveMissiles = 0;
+        
+        XPLMDebugString("Missile Guidance: Target cleared, all missiles released\n");
     }
 }
