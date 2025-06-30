@@ -320,22 +320,26 @@ void FormatMGRS(double latitude, double longitude, char* output, size_t outputSi
 
 // Hotkey callback for laser designation (Ctrl+L)
 void LaserDesignationHotkey(void* refcon) {
-    // Get current mouse position from X-Plane
-    XPLMDataRef mouseXRef = XPLMFindDataRef("sim/graphics/view/mouse_x");
-    XPLMDataRef mouseYRef = XPLMFindDataRef("sim/graphics/view/mouse_y");
+    // Use screen center as target point (crosshair designation)
+    XPLMDataRef screenWidthRef = XPLMFindDataRef("sim/graphics/view/window_width");
+    XPLMDataRef screenHeightRef = XPLMFindDataRef("sim/graphics/view/window_height");
     
-    if (mouseXRef && mouseYRef) {
-        int mouseX = XPLMGetDatai(mouseXRef);
-        int mouseY = XPLMGetDatai(mouseYRef);
+    if (screenWidthRef && screenHeightRef) {
+        int screenWidth = XPLMGetDatai(screenWidthRef);
+        int screenHeight = XPLMGetDatai(screenHeightRef);
         
-        // Perform laser designation at mouse cursor location
-        if (DesignateLaser(mouseX, mouseY, &gLastTarget)) {
-            XPLMDebugString("JTAC: Target designated successfully at cursor location\n");
+        // Use screen center (crosshair/center of view)
+        int centerX = screenWidth / 2;
+        int centerY = screenHeight / 2;
+        
+        // Perform laser designation at screen center
+        if (DesignateLaser(centerX, centerY, &gLastTarget)) {
+            XPLMDebugString("JTAC: Target designated successfully at crosshair\n");
         } else {
-            XPLMDebugString("JTAC: No terrain intersection found at cursor location\n");
+            XPLMDebugString("JTAC: No terrain intersection found at crosshair\n");
         }
     } else {
-        XPLMDebugString("JTAC: Could not get mouse position\n");
+        XPLMDebugString("JTAC: Could not get screen dimensions\n");
     }
 }
 
@@ -400,7 +404,7 @@ void DrawWindow(XPLMWindowID inWindowID, void* inRefcon) {
     
     // Instructions
     line++;
-    snprintf(buffer, sizeof(buffer), "Press Ctrl+L to designate laser target at cursor");
+    snprintf(buffer, sizeof(buffer), "Press Ctrl+L to designate target at crosshair");
     float gray[] = {0.78f, 0.78f, 0.78f};
     XPLMDrawString(gray, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
 }
