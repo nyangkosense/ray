@@ -73,7 +73,6 @@ void QuaternionFromDirectionVector(float dirX, float dirY, float dirZ,
     dirZ /= length;
     
     // Calculate rotation from (0,0,1) to direction vector
-    float forwardZ = 1.0f;
     float dot = dirZ; // dot product with (0,0,1)
     
     if (dot > 0.9999f) {
@@ -193,10 +192,6 @@ bool InitializeMissileGuidance() {
     return true;
 }
 
-// Shutdown missile guidance system
-void ShutdownMissileGuidance() {
-    XPLMUnregisterFlightLoopCallback(MissileGuidanceCallback, NULL);
-}
 
 // Set target coordinates for missile guidance
 void SetMissileTarget(const TargetCoords& target) {
@@ -398,6 +393,9 @@ extern "C" {
         return InitializeMissileGuidance();
     }
     
+    void ShutdownMissileGuidance() {
+        XPLMUnregisterFlightLoopCallback(MissileGuidanceCallback, NULL);
+    }
     
     void SetJTACTarget(double latitude, double longitude, double elevation, 
                        float localX, float localY, float localZ) {
