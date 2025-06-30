@@ -1,4 +1,4 @@
-# X-Plane 12 JTAC Coordinate System Plugin
+# X-Plane 12 JTAC Coordinate System Plugin with missile guidance
 ![2014780_319](https://github.com/user-attachments/assets/5d265fbd-f6bc-4b2b-addf-7de1c6cfd4f5)
 
 ## Overview
