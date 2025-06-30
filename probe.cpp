@@ -35,11 +35,11 @@ static XPLMDataRef gPlaneRoll = NULL;
 static XPLMDataRef gViewHeading = NULL;
 static XPLMDataRef gViewPitch = NULL;
 
-// Mouse tracking
-static XPLMDataRef gMouseX = NULL;
-static XPLMDataRef gMouseY = NULL;
-static XPLMDataRef gScreenWidth = NULL;
-static XPLMDataRef gScreenHeight = NULL;
+// Hotkey handling
+static XPLMHotKeyID gLaserHotkey = NULL;
+
+// Function declarations
+void LaserDesignationHotkey(void* refcon);
 
 // Terrain probe handle
 static XPLMProbeRef gTerrainProbe = NULL;
@@ -82,18 +82,19 @@ PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc) {
     gViewHeading = XPLMFindDataRef("sim/graphics/view/view_heading");
     gViewPitch = XPLMFindDataRef("sim/graphics/view/view_pitch");
     
-    gMouseX = XPLMFindDataRef("sim/graphics/view/click_3d_x");
-    gMouseY = XPLMFindDataRef("sim/graphics/view/click_3d_y");
-    gScreenWidth = XPLMFindDataRef("sim/graphics/view/window_width");
-    gScreenHeight = XPLMFindDataRef("sim/graphics/view/window_height");
-    
     // Create terrain probe
     gTerrainProbe = XPLMCreateProbe(xplm_ProbeY);
+    
+    // Register hotkey for laser designation (Ctrl+L)
+    gLaserHotkey = XPLMRegisterHotKey(XPLM_VK_L, xplm_DownFlag | xplm_ControlFlag, "Laser Target Designation", LaserDesignationHotkey, NULL);
     
     return 1;
 }
 
 PLUGIN_API void XPluginStop(void) {
+    if (gLaserHotkey) {
+        XPLMUnregisterHotKey(gLaserHotkey);
+    }
     if (gTerrainProbe) {
         XPLMDestroyProbe(gTerrainProbe);
     }
@@ -145,11 +146,27 @@ void InvertMatrix4x4(const float* m, float* invOut) {
     }
 }
 
-// Convert screen coordinates to local ray direction using OpenGL matrices
-bool ScreenToLocalRay(int screenX, int screenY, double aircraftLat, double aircraftLon, double aircraftElev,
-                      float* rayStartX, float* rayStartY, float* rayStartZ,
-                      float* rayDirX, float* rayDirY, float* rayDirZ) {
+// Convert screen coordinates to world ray using X-Plane's projection system
+bool ScreenToWorldRay(int screenX, int screenY, 
+                     float* rayStartX, float* rayStartY, float* rayStartZ,
+                     float* rayDirX, float* rayDirY, float* rayDirZ) {
     
+    // Get current aircraft position as ray start
+    double aircraftLat = XPLMGetDatad(gPlaneLatitude);
+    double aircraftLon = XPLMGetDatad(gPlaneLongitude);
+    double aircraftElev = XPLMGetDatad(gPlaneElevation);
+    
+    // Get current screen dimensions
+    XPLMDataRef screenWidthRef = XPLMFindDataRef("sim/graphics/view/window_width");
+    XPLMDataRef screenHeightRef = XPLMFindDataRef("sim/graphics/view/window_height");
+    int screenWidth = XPLMGetDatai(screenWidthRef);
+    int screenHeight = XPLMGetDatai(screenHeightRef);
+    
+    // Convert to normalized coordinates (-1 to 1)
+    float normalX = (2.0f * screenX / (float)screenWidth) - 1.0f;
+    float normalY = 1.0f - (2.0f * screenY / (float)screenHeight);
+    
+    // Use X-Plane's world coordinate system
     // Convert aircraft position to local coordinates for ray start
     double localX, localY, localZ;
     XPLMWorldToLocal(aircraftLat, aircraftLon, aircraftElev, &localX, &localY, &localZ);
@@ -158,75 +175,38 @@ bool ScreenToLocalRay(int screenX, int screenY, double aircraftLat, double aircr
     *rayStartY = (float)localY;
     *rayStartZ = (float)localZ;
     
-    // Get OpenGL matrices
-    GLfloat modelMatrix[16];
-    GLfloat projMatrix[16];
-    GLint viewport[4];
+    // Get view parameters
+    float heading = XPLMGetDataf(gViewHeading) * DEG_TO_RAD;
+    float pitch = XPLMGetDataf(gViewPitch) * DEG_TO_RAD;
     
-    glGetFloatv(GL_MODELVIEW_MATRIX, modelMatrix);
-    glGetFloatv(GL_PROJECTION_MATRIX, projMatrix);
-    glGetIntegerv(GL_VIEWPORT, viewport);
+    // Calculate FOV (approximate)
+    float fov = 45.0f * DEG_TO_RAD; // Default X-Plane FOV
+    float aspect = (float)screenWidth / (float)screenHeight;
     
-    // Calculate combined model-view-projection matrix
-    float mvpMatrix[16];
-    MultiplyMatrix4x4(projMatrix, modelMatrix, mvpMatrix);
+    // Calculate ray direction based on screen position and view angles
+    float tanHalfFov = tan(fov * 0.5f);
     
-    // Invert the MVP matrix
-    float invMvpMatrix[16];
-    InvertMatrix4x4(mvpMatrix, invMvpMatrix);
+    // Ray direction in view space
+    float viewX = normalX * tanHalfFov * aspect;
+    float viewY = normalY * tanHalfFov;
+    float viewZ = -1.0f; // Forward direction
     
-    // Convert screen coordinates to normalized device coordinates
-    float ndcX = (2.0f * (screenX - viewport[0])) / viewport[2] - 1.0f;
-    float ndcY = 1.0f - (2.0f * (screenY - viewport[1])) / viewport[3];
+    // Transform ray direction by view rotation
+    float cosHeading = cos(heading);
+    float sinHeading = sin(heading);
+    float cosPitch = cos(pitch);
+    float sinPitch = sin(pitch);
     
-    // Create two points in NDC space (near and far)
-    float nearPoint[4] = {ndcX, ndcY, -1.0f, 1.0f}; // Near plane
-    float farPoint[4] = {ndcX, ndcY, 1.0f, 1.0f};   // Far plane
+    // Apply pitch rotation (around X axis)
+    float tempY = viewY * cosPitch - viewZ * sinPitch;
+    float tempZ = viewY * sinPitch + viewZ * cosPitch;
+    viewY = tempY;
+    viewZ = tempZ;
     
-    // Transform to OpenGL world space
-    float worldNear[4], worldFar[4];
-    
-    // Transform near point
-    worldNear[0] = invMvpMatrix[0] * nearPoint[0] + invMvpMatrix[4] * nearPoint[1] + 
-                   invMvpMatrix[8] * nearPoint[2] + invMvpMatrix[12] * nearPoint[3];
-    worldNear[1] = invMvpMatrix[1] * nearPoint[0] + invMvpMatrix[5] * nearPoint[1] + 
-                   invMvpMatrix[9] * nearPoint[2] + invMvpMatrix[13] * nearPoint[3];
-    worldNear[2] = invMvpMatrix[2] * nearPoint[0] + invMvpMatrix[6] * nearPoint[1] + 
-                   invMvpMatrix[10] * nearPoint[2] + invMvpMatrix[14] * nearPoint[3];
-    worldNear[3] = invMvpMatrix[3] * nearPoint[0] + invMvpMatrix[7] * nearPoint[1] + 
-                   invMvpMatrix[11] * nearPoint[2] + invMvpMatrix[15] * nearPoint[3];
-    
-    // Transform far point
-    worldFar[0] = invMvpMatrix[0] * farPoint[0] + invMvpMatrix[4] * farPoint[1] + 
-                  invMvpMatrix[8] * farPoint[2] + invMvpMatrix[12] * farPoint[3];
-    worldFar[1] = invMvpMatrix[1] * farPoint[0] + invMvpMatrix[5] * farPoint[1] + 
-                  invMvpMatrix[9] * farPoint[2] + invMvpMatrix[13] * farPoint[3];
-    worldFar[2] = invMvpMatrix[2] * farPoint[0] + invMvpMatrix[6] * farPoint[1] + 
-                  invMvpMatrix[10] * farPoint[2] + invMvpMatrix[14] * farPoint[3];
-    worldFar[3] = invMvpMatrix[3] * farPoint[0] + invMvpMatrix[7] * farPoint[1] + 
-                  invMvpMatrix[11] * farPoint[2] + invMvpMatrix[15] * farPoint[3];
-    
-    // Perspective divide
-    if (worldNear[3] != 0.0f) {
-        worldNear[0] /= worldNear[3];
-        worldNear[1] /= worldNear[3];
-        worldNear[2] /= worldNear[3];
-    }
-    
-    if (worldFar[3] != 0.0f) {
-        worldFar[0] /= worldFar[3];
-        worldFar[1] /= worldFar[3];
-        worldFar[2] /= worldFar[3];
-    }
-    
-    // The OpenGL unprojection gives us OpenGL world coordinates
-    // We need to convert these to X-Plane local coordinates
-    // X-Plane's OpenGL coordinate system is already in local space relative to the world origin
-    
-    // Calculate ray direction in local space
-    *rayDirX = worldFar[0] - worldNear[0];
-    *rayDirY = worldFar[1] - worldNear[1];
-    *rayDirZ = worldFar[2] - worldNear[2];
+    // Apply heading rotation (around Y axis)
+    *rayDirX = viewX * cosHeading - viewZ * sinHeading;
+    *rayDirY = viewY;
+    *rayDirZ = viewX * sinHeading + viewZ * cosHeading;
     
     // Normalize direction vector
     float length = sqrt(*rayDirX * *rayDirX + *rayDirY * *rayDirY + *rayDirZ * *rayDirZ);
@@ -242,16 +222,16 @@ bool ScreenToLocalRay(int screenX, int screenY, double aircraftLat, double aircr
 
 // Perform laser designation at screen coordinates
 bool DesignateLaser(int screenX, int screenY, TargetCoords* target) {
-    // Get aircraft position in world coordinates
-    double aircraftLat = XPLMGetDatad(gPlaneLatitude);
-    double aircraftLon = XPLMGetDatad(gPlaneLongitude);
-    double aircraftElev = XPLMGetDatad(gPlaneElevation);
+    // Get ray start and direction
+    // double aircraftLat = XPLMGetDatad(gPlaneLatitude);
+    // double aircraftLon = XPLMGetDatad(gPlaneLongitude);
+    // double aircraftElev = XPLMGetDatad(gPlaneElevation);
     
     // Get ray start and direction using OpenGL matrices
     float rayStartX, rayStartY, rayStartZ;
     float rayDirX, rayDirY, rayDirZ;
     
-    if (!ScreenToLocalRay(screenX, screenY, aircraftLat, aircraftLon, aircraftElev,
+    if (!ScreenToWorldRay(screenX, screenY,
                          &rayStartX, &rayStartY, &rayStartZ,
                          &rayDirX, &rayDirY, &rayDirZ)) {
         return false;
@@ -338,25 +318,25 @@ void FormatMGRS(double latitude, double longitude, char* output, size_t outputSi
              abs(latDeg), latMin, latSec, abs(lonDeg), lonMin, lonSec);
 }
 
-// Mouse click handler
-int MouseClickHandler(XPLMWindowID inWindowID, int x, int y, int mouse, void* inRefcon) {
-    if (mouse == xplm_MouseDown) {
-        // Convert window coordinates to screen coordinates
-        int left, top, right, bottom;
-        XPLMGetWindowGeometry(inWindowID, &left, &top, &right, &bottom);
-        
-        int screenX = x;
-        int screenY = y;
-        
-        // Perform laser designation
-        if (DesignateLaser(screenX, screenY, &gLastTarget)) {
-            XPLMDebugString("JTAC: Target designated successfully\n");
-        } else {
-            XPLMDebugString("JTAC: No terrain intersection found\n");
-        }
-    }
+// Hotkey callback for laser designation (Ctrl+L)
+void LaserDesignationHotkey(void* refcon) {
+    // Get current mouse position from X-Plane
+    XPLMDataRef mouseXRef = XPLMFindDataRef("sim/graphics/view/mouse_x");
+    XPLMDataRef mouseYRef = XPLMFindDataRef("sim/graphics/view/mouse_y");
     
-    return 1;
+    if (mouseXRef && mouseYRef) {
+        int mouseX = XPLMGetDatai(mouseXRef);
+        int mouseY = XPLMGetDatai(mouseYRef);
+        
+        // Perform laser designation at mouse cursor location
+        if (DesignateLaser(mouseX, mouseY, &gLastTarget)) {
+            XPLMDebugString("JTAC: Target designated successfully at cursor location\n");
+        } else {
+            XPLMDebugString("JTAC: No terrain intersection found at cursor location\n");
+        }
+    } else {
+        XPLMDebugString("JTAC: Could not get mouse position\n");
+    }
 }
 
 // Display window draw function
@@ -420,7 +400,7 @@ void DrawWindow(XPLMWindowID inWindowID, void* inRefcon) {
     
     // Instructions
     line++;
-    snprintf(buffer, sizeof(buffer), "Click to designate laser target");
+    snprintf(buffer, sizeof(buffer), "Press Ctrl+L to designate laser target at cursor");
     float gray[] = {0.78f, 0.78f, 0.78f};
     XPLMDrawString(gray, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
 }
@@ -435,7 +415,7 @@ void CreateJTACWindow() {
     params.bottom = 400;
     params.visible = 1;
     params.drawWindowFunc = DrawWindow;
-    params.handleMouseClickFunc = MouseClickHandler;
+    params.handleMouseClickFunc = NULL;
     params.handleKeyFunc = NULL;
     params.handleCursorFunc = NULL;
     params.handleMouseWheelFunc = NULL;
