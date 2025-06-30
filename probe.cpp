@@ -146,15 +146,34 @@ void InvertMatrix4x4(const float* m, float* invOut) {
     }
 }
 
-// Convert screen coordinates to world ray using X-Plane's projection system
+// Convert screen coordinates to world ray using X-Plane's view system
 bool ScreenToWorldRay(int screenX, int screenY, 
                      float* rayStartX, float* rayStartY, float* rayStartZ,
                      float* rayDirX, float* rayDirY, float* rayDirZ) {
     
-    // Get current aircraft position as ray start
-    double aircraftLat = XPLMGetDatad(gPlaneLatitude);
-    double aircraftLon = XPLMGetDatad(gPlaneLongitude);
-    double aircraftElev = XPLMGetDatad(gPlaneElevation);
+    // Get camera/view position (not aircraft position)
+    XPLMDataRef camXRef = XPLMFindDataRef("sim/graphics/view/view_x");
+    XPLMDataRef camYRef = XPLMFindDataRef("sim/graphics/view/view_y");
+    XPLMDataRef camZRef = XPLMFindDataRef("sim/graphics/view/view_z");
+    
+    if (!camXRef || !camYRef || !camZRef) {
+        // Fallback to aircraft position if camera position not available
+        double aircraftLat = XPLMGetDatad(gPlaneLatitude);
+        double aircraftLon = XPLMGetDatad(gPlaneLongitude);
+        double aircraftElev = XPLMGetDatad(gPlaneElevation);
+        
+        double localX, localY, localZ;
+        XPLMWorldToLocal(aircraftLat, aircraftLon, aircraftElev, &localX, &localY, &localZ);
+        
+        *rayStartX = (float)localX;
+        *rayStartY = (float)localY + 2.0f; // Add 2m height for eye level
+        *rayStartZ = (float)localZ;
+    } else {
+        // Use actual camera position
+        *rayStartX = XPLMGetDataf(camXRef);
+        *rayStartY = XPLMGetDataf(camYRef);
+        *rayStartZ = XPLMGetDataf(camZRef);
+    }
     
     // Get current screen dimensions
     XPLMDataRef screenWidthRef = XPLMFindDataRef("sim/graphics/view/window_width");
@@ -166,30 +185,22 @@ bool ScreenToWorldRay(int screenX, int screenY,
     float normalX = (2.0f * screenX / (float)screenWidth) - 1.0f;
     float normalY = 1.0f - (2.0f * screenY / (float)screenHeight);
     
-    // Use X-Plane's world coordinate system
-    // Convert aircraft position to local coordinates for ray start
-    double localX, localY, localZ;
-    XPLMWorldToLocal(aircraftLat, aircraftLon, aircraftElev, &localX, &localY, &localZ);
-    
-    *rayStartX = (float)localX;
-    *rayStartY = (float)localY;
-    *rayStartZ = (float)localZ;
-    
     // Get view parameters
     float heading = XPLMGetDataf(gViewHeading) * DEG_TO_RAD;
     float pitch = XPLMGetDataf(gViewPitch) * DEG_TO_RAD;
     
-    // Calculate FOV (approximate)
-    float fov = 45.0f * DEG_TO_RAD; // Default X-Plane FOV
+    // Get actual field of view
+    XPLMDataRef fovRef = XPLMFindDataRef("sim/graphics/view/field_of_view_deg");
+    float fov = fovRef ? XPLMGetDataf(fovRef) * DEG_TO_RAD : (45.0f * DEG_TO_RAD);
     float aspect = (float)screenWidth / (float)screenHeight;
     
     // Calculate ray direction based on screen position and view angles
     float tanHalfFov = tan(fov * 0.5f);
     
-    // Ray direction in view space
+    // Ray direction in view space (camera relative)
     float viewX = normalX * tanHalfFov * aspect;
     float viewY = normalY * tanHalfFov;
-    float viewZ = -1.0f; // Forward direction
+    float viewZ = -1.0f; // Forward direction (negative Z in OpenGL)
     
     // Transform ray direction by view rotation
     float cosHeading = cos(heading);
@@ -203,7 +214,7 @@ bool ScreenToWorldRay(int screenX, int screenY,
     viewY = tempY;
     viewZ = tempZ;
     
-    // Apply heading rotation (around Y axis)
+    // Apply heading rotation (around Y axis) 
     *rayDirX = viewX * cosHeading - viewZ * sinHeading;
     *rayDirY = viewY;
     *rayDirZ = viewX * sinHeading + viewZ * cosHeading;
