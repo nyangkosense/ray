@@ -1,4 +1,5 @@
 # X-Plane 12 JTAC Coordinate System Plugin
+![2014780_319](https://github.com/user-attachments/assets/5d265fbd-f6bc-4b2b-addf-7de1c6cfd4f5)
 
 ## Overview
 
@@ -173,7 +174,7 @@ This system evolved from a simple coordinate display to a complete JTAC solution
 3. **Ray Casting Refinement**: Implemented binary search for precision
 4. **Missile Integration**: Added weapon system integration
 5. **Physics Optimization**: Simplified guidance to prevent oscillation
-6. **Final Polish**: Achieved "WOW almost perfect!" status through iterative refinement
+6. **Final Polish**: Make the Plugin Toggable, create a Menuentry for convenience
 
 The key breakthrough was realizing that accurate targeting requires using the camera/view position rather than the aircraft position, combined with proper binary search terrain intersection rather than linear probing.
 
