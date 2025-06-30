@@ -248,39 +248,68 @@ bool DesignateLaser(int screenX, int screenY, TargetCoords* target) {
         return false;
     }
     
-    // Perform terrain intersection using ray marching
-    const int maxSteps = 1000;
-    const float stepSize = 10.0f; // 10 meters per step
+    // Perform terrain intersection using divide-and-conquer ray casting
+    // This is the proper way to do ray casting in X-Plane as discussed in forums
+    
+    float minDistance = 1.0f;      // 1 meter minimum
+    float maxDistance = 30000.0f;   // 30km maximum range
+    float currentDistance = maxDistance;
     
     XPLMProbeInfo_t probeInfo;
     probeInfo.structSize = sizeof(XPLMProbeInfo_t);
     
-    for (int i = 1; i <= maxSteps; i++) {
-        float testX = rayStartX + rayDirX * stepSize * i;
-        float testY = rayStartY + rayDirY * stepSize * i;
-        float testZ = rayStartZ + rayDirZ * stepSize * i;
+    // Binary search for terrain intersection
+    int iterations = 0;
+    const int maxIterations = 50; // Should be enough for 1-meter precision
+    
+    while ((maxDistance - minDistance) > 1.0f && iterations < maxIterations) {
+        currentDistance = (minDistance + maxDistance) * 0.5f;
+        
+        // Calculate test point along ray
+        float testX = rayStartX + rayDirX * currentDistance;
+        float testY = rayStartY + rayDirY * currentDistance;
+        float testZ = rayStartZ + rayDirZ * currentDistance;
         
         // Probe terrain at this point
         XPLMProbeResult result = XPLMProbeTerrainXYZ(gTerrainProbe, testX, testY, testZ, &probeInfo);
         
         if (result == xplm_ProbeHitTerrain) {
-            // Found intersection - store target coordinates
-            target->localX = probeInfo.locationX;
-            target->localY = probeInfo.locationY;
-            target->localZ = probeInfo.locationZ;
-            
-            // Convert back to world coordinates
-            XPLMLocalToWorld(probeInfo.locationX, probeInfo.locationY, probeInfo.locationZ,
-                           &target->latitude, &target->longitude, &target->elevation);
-            
-            target->valid = true;
-            return true;
+            // We're above terrain, check if we're below ground level
+            if (testY < probeInfo.locationY) {
+                // We're underground - intersection is closer
+                maxDistance = currentDistance;
+            } else {
+                // We're above ground - intersection is further
+                minDistance = currentDistance;
+            }
+        } else {
+            // No terrain data - probably too far out
+            maxDistance = currentDistance;
         }
         
-        // Check if we've gone too far (beyond reasonable range)
-        if (stepSize * i > 50000.0f) { // 50km max range
-            break;
-        }
+        iterations++;
+    }
+    
+    // Final probe at the refined distance
+    currentDistance = (minDistance + maxDistance) * 0.5f;
+    float finalX = rayStartX + rayDirX * currentDistance;
+    float finalY = rayStartY + rayDirY * currentDistance;
+    float finalZ = rayStartZ + rayDirZ * currentDistance;
+    
+    XPLMProbeResult finalResult = XPLMProbeTerrainXYZ(gTerrainProbe, finalX, finalY, finalZ, &probeInfo);
+    
+    if (finalResult == xplm_ProbeHitTerrain) {
+        // Store the terrain intersection point
+        target->localX = probeInfo.locationX;
+        target->localY = probeInfo.locationY;
+        target->localZ = probeInfo.locationZ;
+        
+        // Convert back to world coordinates
+        XPLMLocalToWorld(probeInfo.locationX, probeInfo.locationY, probeInfo.locationZ,
+                       &target->latitude, &target->longitude, &target->elevation);
+        
+        target->valid = true;
+        return true;
     }
     
     target->valid = false;
