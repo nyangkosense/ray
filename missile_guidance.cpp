@@ -199,11 +199,11 @@ struct MissileState {
 
 static MissileState gMissileStates[25] = {0};
 
-// Calculate realistic missile guidance with proper physics
-void CalculateRealisticMissileGuidance(int missileIndex, float deltaTime) {
+// Simple, smooth guidance - don't touch speed, just direction
+void CalculateSmoothGuidance(int missileIndex, float deltaTime) {
     if (!gGuidanceTarget.valid || missileIndex < 0 || missileIndex >= 25) return;
     
-    // Get missile current position using array access
+    // Get missile current position
     float missilePos[3];
     XPLMGetDatavf(gMissileX, &missilePos[0], missileIndex, 1);
     XPLMGetDatavf(gMissileY, &missilePos[1], missileIndex, 1);
@@ -212,7 +212,7 @@ void CalculateRealisticMissileGuidance(int missileIndex, float deltaTime) {
     float missileY = missilePos[1];
     float missileZ = missilePos[2];
     
-    // Get missile current velocity using array access
+    // Get missile current velocity
     float missileVel[3];
     XPLMGetDatavf(gMissileVX, &missileVel[0], missileIndex, 1);
     XPLMGetDatavf(gMissileVY, &missileVel[1], missileIndex, 1);
@@ -221,119 +221,70 @@ void CalculateRealisticMissileGuidance(int missileIndex, float deltaTime) {
     float missileVY = missileVel[1];
     float missileVZ = missileVel[2];
     
-    // Initialize missile state if first time
-    MissileState* state = &gMissileStates[missileIndex];
-    if (!state->initialized) {
-        state->prevPosX = missileX;
-        state->prevPosY = missileY;
-        state->prevPosZ = missileZ;
-        state->prevVelX = missileVX;
-        state->prevVelY = missileVY;
-        state->prevVelZ = missileVZ;
-        state->initialized = true;
-    }
-    
-    // Calculate vectors to target
+    // Calculate vector to target
     float toTargetX = gGuidanceTarget.localX - missileX;
     float toTargetY = gGuidanceTarget.localY - missileY;
     float toTargetZ = gGuidanceTarget.localZ - missileZ;
     float distanceToTarget = sqrt(toTargetX * toTargetX + toTargetY * toTargetY + toTargetZ * toTargetZ);
     
-    // Check if target reached
-    if (distanceToTarget < 15.0f) {
-        // Target reached - minimal thrust
-        float minThrust = 0.0f;
-        XPLMSetDatavf(gMissileThrustRat, &minThrust, missileIndex, 1);
+    // Check if very close to target
+    if (distanceToTarget < 20.0f) {
+        // Stop thrust when very close
+        float noThrust = 0.0f;
+        XPLMSetDatavf(gMissileThrustRat, &noThrust, missileIndex, 1);
         return;
     }
     
-    // Current missile speed
+    // Get current speed (magnitude)
     float currentSpeed = sqrt(missileVX * missileVX + missileVY * missileVY + missileVZ * missileVZ);
     
-    // Missile aerodynamic parameters
-    const float MAX_THRUST = 1.0f;
-    const float TARGET_SPEED = 250.0f; // m/s (~900 km/h, realistic missile speed)
-    const float MAX_ACCELERATION = 50.0f; // m/s² (realistic for guided missile)
-    const float TURN_RATE_LIMIT = 10.0f; // degrees/second
+    // Don't modify speed - just preserve it
+    if (currentSpeed < 1.0f) currentSpeed = 50.0f; // Fallback minimum speed
     
-    // Calculate desired direction to target (unit vector)
+    // Calculate desired direction (normalized vector to target)
     float desiredDirX = toTargetX / distanceToTarget;
     float desiredDirY = toTargetY / distanceToTarget;
     float desiredDirZ = toTargetZ / distanceToTarget;
     
-    // Current missile direction (normalized velocity)
-    float currentDirX = 0.0f, currentDirY = 0.0f, currentDirZ = 1.0f; // Default forward
-    if (currentSpeed > 1.0f) {
-        currentDirX = missileVX / currentSpeed;
-        currentDirY = missileVY / currentSpeed;
-        currentDirZ = missileVZ / currentSpeed;
+    // Current direction (normalized current velocity)
+    float currentDirX = missileVX / currentSpeed;
+    float currentDirY = missileVY / currentSpeed;
+    float currentDirZ = missileVZ / currentSpeed;
+    
+    // Very gentle steering - small correction factor
+    float steeringGain = 0.05f; // Very small - smooth changes only
+    
+    // Calculate new direction (interpolate very slowly toward target)
+    float newDirX = currentDirX + (desiredDirX - currentDirX) * steeringGain;
+    float newDirY = currentDirY + (desiredDirY - currentDirY) * steeringGain;
+    float newDirZ = currentDirZ + (desiredDirZ - currentDirZ) * steeringGain;
+    
+    // Normalize new direction
+    float newDirLength = sqrt(newDirX * newDirX + newDirY * newDirY + newDirZ * newDirZ);
+    if (newDirLength > 0.001f) {
+        newDirX /= newDirLength;
+        newDirY /= newDirLength;
+        newDirZ /= newDirLength;
     }
     
-    // Calculate angle between current direction and desired direction
-    float dotProduct = currentDirX * desiredDirX + currentDirY * desiredDirY + currentDirZ * desiredDirZ;
-    dotProduct = fmax(-1.0f, fmin(1.0f, dotProduct)); // Clamp to [-1, 1]
-    float angleToTarget = acos(dotProduct) * RAD_TO_DEG;
+    // Apply the same speed in the new direction
+    float newVX = newDirX * currentSpeed;
+    float newVY = newDirY * currentSpeed;
+    float newVZ = newDirZ * currentSpeed;
     
-    // Limit turn rate for realistic missile behavior
-    float maxTurnThisFrame = TURN_RATE_LIMIT * deltaTime;
-    float turnRatio = 1.0f;
-    if (angleToTarget > maxTurnThisFrame) {
-        turnRatio = maxTurnThisFrame / angleToTarget;
-    }
-    
-    // Smoothly interpolate direction change
-    float interpDirX = currentDirX + (desiredDirX - currentDirX) * turnRatio * 0.5f;
-    float interpDirY = currentDirY + (desiredDirY - currentDirY) * turnRatio * 0.5f;
-    float interpDirZ = currentDirZ + (desiredDirZ - currentDirZ) * turnRatio * 0.5f;
-    
-    // Normalize interpolated direction
-    float interpLength = sqrt(interpDirX * interpDirX + interpDirY * interpDirY + interpDirZ * interpDirZ);
-    if (interpLength > 0.001f) {
-        interpDirX /= interpLength;
-        interpDirY /= interpLength;
-        interpDirZ /= interpLength;
-    }
-    
-    // Speed control based on distance and angle
-    float targetSpeed = TARGET_SPEED;
-    if (distanceToTarget < 500.0f) {
-        // Slow down when approaching target
-        targetSpeed = TARGET_SPEED * 0.7f;
-    }
-    if (angleToTarget > 45.0f) {
-        // Slow down when making sharp turns
-        targetSpeed = TARGET_SPEED * 0.6f;
-    }
-    
-    // Calculate thrust needed
-    float speedError = targetSpeed - currentSpeed;
-    float thrustNeeded = speedError / (MAX_ACCELERATION * deltaTime);
-    thrustNeeded = fmax(0.0f, fmin(MAX_THRUST, thrustNeeded));
-    
-    // Apply minimum thrust to keep missile active
-    if (thrustNeeded < 0.3f) thrustNeeded = 0.3f;
-    
-    // Calculate new velocity
-    float newVX = interpDirX * targetSpeed;
-    float newVY = interpDirY * targetSpeed;
-    float newVZ = interpDirZ * targetSpeed;
-    
-    // Smooth velocity changes to avoid oscillations
-    float velocityGain = 0.3f; // Much smoother than before
-    newVX = missileVX + (newVX - missileVX) * velocityGain;
-    newVY = missileVY + (newVY - missileVY) * velocityGain;
-    newVZ = missileVZ + (newVZ - missileVZ) * velocityGain;
-    
-    // Apply changes
+    // Set new velocity (preserving speed, only changing direction)
     XPLMSetDatavf(gMissileVX, &newVX, missileIndex, 1);
     XPLMSetDatavf(gMissileVY, &newVY, missileIndex, 1);
     XPLMSetDatavf(gMissileVZ, &newVZ, missileIndex, 1);
-    XPLMSetDatavf(gMissileThrustRat, &thrustNeeded, missileIndex, 1);
     
-    // Update missile orientation to match velocity direction
+    // Keep thrust steady
+    float steadyThrust = 0.8f;
+    XPLMSetDatavf(gMissileThrustRat, &steadyThrust, missileIndex, 1);
+    
+    // Update orientation to match velocity direction (very gently)
     if (gMissileQ1 && gMissileQ2 && gMissileQ3 && gMissileQ4) {
         float q1, q2, q3, q4;
-        QuaternionFromDirectionVector(interpDirX, interpDirY, interpDirZ, &q1, &q2, &q3, &q4);
+        QuaternionFromDirectionVector(newDirX, newDirY, newDirZ, &q1, &q2, &q3, &q4);
         
         // Get current quaternion
         float currentQ[4];
@@ -342,8 +293,8 @@ void CalculateRealisticMissileGuidance(int missileIndex, float deltaTime) {
         XPLMGetDatavf(gMissileQ3, &currentQ[2], missileIndex, 1);
         XPLMGetDatavf(gMissileQ4, &currentQ[3], missileIndex, 1);
         
-        // Very smooth orientation changes
-        float orientationGain = 0.1f;
+        // Very gentle orientation changes
+        float orientationGain = 0.02f; // Even gentler than before
         float newQ1 = currentQ[0] + (q1 - currentQ[0]) * orientationGain;
         float newQ2 = currentQ[1] + (q2 - currentQ[1]) * orientationGain;
         float newQ3 = currentQ[2] + (q3 - currentQ[2]) * orientationGain;
@@ -355,14 +306,6 @@ void CalculateRealisticMissileGuidance(int missileIndex, float deltaTime) {
         XPLMSetDatavf(gMissileQ3, &newQ3, missileIndex, 1);
         XPLMSetDatavf(gMissileQ4, &newQ4, missileIndex, 1);
     }
-    
-    // Update state for next frame
-    state->prevPosX = missileX;
-    state->prevPosY = missileY;
-    state->prevPosZ = missileZ;
-    state->prevVelX = missileVX;
-    state->prevVelY = missileVY;
-    state->prevVelZ = missileVZ;
 }
 
 // Flight loop callback for missile guidance
@@ -396,8 +339,8 @@ float MissileGuidanceCallback(float inElapsedSinceLastCall, float inElapsedTimeS
         XPLMDebugString(buffer);
     }
     
-    // Apply realistic missile guidance
-    CalculateRealisticMissileGuidance(gActiveMissileIndex, inElapsedSinceLastCall);
+    // Apply smooth guidance
+    CalculateSmoothGuidance(gActiveMissileIndex, inElapsedSinceLastCall);
     
     return 0.05f; // Call again in 0.05 seconds for responsive guidance
 }
