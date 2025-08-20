@@ -2,6 +2,8 @@
 
 ![JTAC Plugin Screenshot](https://github.com/user-attachments/assets/5d265fbd-f6bc-4b2b-addf-7de1c6cfd4f5)
 
+![20250820102224_1](https://github.com/user-attachments/assets/78986e31-69d4-4c91-a0ea-e5a7c4c61a19)
+
 ## Overview
 
 This plugin implements a realistic Joint Terminal Attack Controller (JTAC) coordinate designation system for X-Plane 12. It combines precise terrain probing with missile guidance capabilities, allowing pilots to designate targets and guide missiles to specific coordinates using real-world military procedures.
