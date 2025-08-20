@@ -8,6 +8,10 @@
 
 This plugin implements a realistic Joint Terminal Attack Controller (JTAC) coordinate designation system for X-Plane 12. It combines precise terrain probing with missile guidance capabilities, allowing pilots to designate targets and guide missiles to specific coordinates using real-world military procedures.
 
+## Installation
+
+[Download](https://github.com/nyangkosense/ray/releases/download/1.0/JTACCoords.xpl) the Plugin from the Release and place it in \X-Plane 12\Resources\plugins
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
