@@ -19,6 +19,7 @@ This plugin implements a realistic Joint Terminal Attack Controller (JTAC) coord
 
 <img width="787" height="390" alt="intrdr" src="https://github.com/user-attachments/assets/e29168df-6e3a-4154-92ba-35ea14b2ed18" />
 
+<img width="867" height="417" alt="image" src="https://github.com/user-attachments/assets/6fe051a4-9d68-4593-be4a-7fa5de98c6c2" />
 
 ## License
 
