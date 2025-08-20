@@ -12,6 +12,14 @@ This plugin implements a realistic Joint Terminal Attack Controller (JTAC) coord
 
 [Download](https://github.com/nyangkosense/ray/releases/download/1.0/JTACCoords.xpl) the Plugin from the Release and place it in \X-Plane 12\Resources\plugins
 
+[Video Demonstration](https://www.youtube.com/watch?v=hPHwOmK8MfQ)
+
+** NOTE: This plugin calculates Target Coordinates from the center view of your screen. By Pressing CTRL + L the target is "selected" and you can arm & fire your missiles. **
+** The missiles need to be in "internal radar" mode, can be selected in Planemaker. **
+
+<img width="787" height="390" alt="intrdr" src="https://github.com/user-attachments/assets/e29168df-6e3a-4154-92ba-35ea14b2ed18" />
+
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
