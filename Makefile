@@ -5,24 +5,20 @@
 CC = x86_64-w64-mingw32-gcc
 CXX = x86_64-w64-mingw32-g++
 
-# Plugin name and output
 PLUGIN_NAME = JTACCoords
 OUTPUT_DIR = build
 PLUGIN_DIR = $(OUTPUT_DIR)/$(PLUGIN_NAME)
 PLUGIN_FILE = $(PLUGIN_DIR)/win_x64/$(PLUGIN_NAME).xpl
 
-# SDK paths
 SDK_DIR = SDK
 INCLUDE_DIRS = -I$(SDK_DIR)/CHeaders/XPLM -I$(SDK_DIR)/CHeaders/Widgets -I.
 LIB_DIR = $(SDK_DIR)/Libraries/Win
 LIBS = -L$(LIB_DIR) -lXPLM_64 -lXPWidgets_64
 
-# Compiler flags for C++
 CXXFLAGS = -std=c++11 -Wall -O2 -fPIC -DXPLM200=1 -DXPLM210=1 -DXPLM300=1 -DXPLM301=1 -DXPLM302=1 -DXPLM400=1
 CXXFLAGS += $(INCLUDE_DIRS)
 CXXFLAGS += -DIBM=1 -DWIN32=1 -D_WIN32=1
 
-# Linker flags for Windows DLL
 LDFLAGS = -shared -static-libgcc -static-libstdc++
 LDFLAGS += -Wl,--kill-at -Wl,--no-undefined
 LDFLAGS += $(LIBS)

@@ -1,3 +1,27 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) sebastian <sebastian@eingabeausgabe.io>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <stdio.h>
@@ -17,7 +41,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-// OpenGL includes
+// OpenGL needed for coordinate transformations
 #if IBM
 #include <GL/gl.h>
 #elif APL
@@ -26,7 +50,7 @@
 #include <GL/gl.h>
 #endif
 
-// Data refs for aircraft position and orientation
+// Aircraft datarefs for position calculations
 static XPLMDataRef gPlaneLatitude = NULL;
 static XPLMDataRef gPlaneLongitude = NULL;
 static XPLMDataRef gPlaneElevation = NULL;
@@ -34,30 +58,30 @@ static XPLMDataRef gPlaneHeading = NULL;
 static XPLMDataRef gPlanePitch = NULL;
 static XPLMDataRef gPlaneRoll = NULL;
 
-// Data refs for view/camera direction
+// View system datarefs for ray casting
 static XPLMDataRef gViewHeading = NULL;
 static XPLMDataRef gViewPitch = NULL;
 
-// Hotkey handling
+// Hotkey IDs for JTAC controls
 static XPLMHotKeyID gLaserHotkey = NULL;
 static XPLMHotKeyID gClearTargetHotkey = NULL;
 
-// Menu handling
+// Plugin menu integration
 static XPLMMenuID gMenu = NULL;
 static int gMenuItemToggleWindow = 0;
 
-// Function declarations
+// Forward declarations
 void LaserDesignationHotkey(void* refcon);
 void ClearTargetHotkey(void* refcon);
 void JTACMenuHandler(void* inMenuRef, void* inItemRef);
 
-// Terrain probe handle
+// X-Plane terrain intersection probe
 static XPLMProbeRef gTerrainProbe = NULL;
 
-// Window for display
+// JTAC display window
 static XPLMWindowID gWindow = NULL;
 
-// Target coordinates storage
+// Stores both world and local coordinates for efficiency
 struct TargetCoords {
     double latitude;
     double longitude;
@@ -68,20 +92,20 @@ struct TargetCoords {
 
 static TargetCoords gLastTarget = {0};
 
-// Convert degrees to radians
+// Mathematical constants
 #define DEG_TO_RAD (M_PI / 180.0)
 #define RAD_TO_DEG (180.0 / M_PI)
 
-// Earth radius in meters
+// WGS84 Earth radius for distance calculations
 #define EARTH_RADIUS 6378137.0
 
-// Plugin lifecycle
+// X-Plane plugin initialization
 PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc) {
     strcpy(outName, "JTAC Coordinate System");
     strcpy(outSig, "com.example.jtac_coords");
     strcpy(outDesc, "Laser designation coordinate extraction system");
     
-    // Get data refs
+    // Locate X-Plane datarefs
     gPlaneLatitude = XPLMFindDataRef("sim/flightmodel/position/latitude");
     gPlaneLongitude = XPLMFindDataRef("sim/flightmodel/position/longitude");
     gPlaneElevation = XPLMFindDataRef("sim/flightmodel/position/elevation");
@@ -92,21 +116,21 @@ PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc) {
     gViewHeading = XPLMFindDataRef("sim/graphics/view/view_heading");
     gViewPitch = XPLMFindDataRef("sim/graphics/view/view_pitch");
     
-    // Create terrain probe
+    // Y-probe for terrain height queries
     gTerrainProbe = XPLMCreateProbe(xplm_ProbeY);
     
-    // Register hotkey for laser designation (Ctrl+L)
+    // Ctrl+L for crosshair targeting
     gLaserHotkey = XPLMRegisterHotKey(XPLM_VK_L, xplm_DownFlag | xplm_ControlFlag, "Laser Target Designation", LaserDesignationHotkey, NULL);
     
-    // Register hotkey for clearing target (Ctrl+C)
+    // Ctrl+C to clear guidance target
     gClearTargetHotkey = XPLMRegisterHotKey(XPLM_VK_C, xplm_DownFlag | xplm_ControlFlag, "Clear Missile Target", ClearTargetHotkey, NULL);
     
-    // Create menu
+    // Add plugin menu entry
     int pluginMenuIndex = XPLMAppendMenuItem(XPLMFindPluginsMenu(), "JTAC Coordinate System", NULL, 1);
     gMenu = XPLMCreateMenu("JTAC Coordinate System", XPLMFindPluginsMenu(), pluginMenuIndex, JTACMenuHandler, NULL);
     gMenuItemToggleWindow = XPLMAppendMenuItem(gMenu, "Toggle Window", (void*)1, 1);
     
-    // Initialize missile guidance system
+    // Start missile guidance subsystem
     if (!InitMissileGuidance()) {
         XPLMDebugString("JTAC: Warning - Missile guidance system failed to initialize\n");
     }
@@ -133,7 +157,7 @@ PLUGIN_API void XPluginStop(void) {
 PLUGIN_API void XPluginDisable(void) {}
 PLUGIN_API int XPluginEnable(void) { return 1; }
 
-// Matrix multiplication helper functions
+// 4x4 matrix operations for coordinate transformations
 void MultiplyMatrix4x4(const float* a, const float* b, float* result) {
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
@@ -145,6 +169,8 @@ void MultiplyMatrix4x4(const float* a, const float* b, float* result) {
     }
 }
 
+// Matrix inversion using analytical method - unused but kept for reference
+// Current implementation uses direct trigonometric approach instead
 void InvertMatrix4x4(const float* m, float* invOut) {
     float inv[16], det;
     int i;
@@ -176,18 +202,18 @@ void InvertMatrix4x4(const float* m, float* invOut) {
     }
 }
 
-// Convert screen coordinates to world ray using X-Plane's view system
+// Projects 2D screen coordinates to 3D world ray using camera parameters
 bool ScreenToWorldRay(int screenX, int screenY, 
                      float* rayStartX, float* rayStartY, float* rayStartZ,
                      float* rayDirX, float* rayDirY, float* rayDirZ) {
     
-    // Get camera/view position (not aircraft position)
+    // Use actual camera position for accurate ray origin
     XPLMDataRef camXRef = XPLMFindDataRef("sim/graphics/view/view_x");
     XPLMDataRef camYRef = XPLMFindDataRef("sim/graphics/view/view_y");
     XPLMDataRef camZRef = XPLMFindDataRef("sim/graphics/view/view_z");
     
     if (!camXRef || !camYRef || !camZRef) {
-        // Fallback to aircraft position if camera position not available
+        // Fallback when camera datarefs unavailable
         double aircraftLat = XPLMGetDatad(gPlaneLatitude);
         double aircraftLon = XPLMGetDatad(gPlaneLongitude);
         double aircraftElev = XPLMGetDatad(gPlaneElevation);
@@ -196,60 +222,59 @@ bool ScreenToWorldRay(int screenX, int screenY,
         XPLMWorldToLocal(aircraftLat, aircraftLon, aircraftElev, &localX, &localY, &localZ);
         
         *rayStartX = (float)localX;
-        *rayStartY = (float)localY + 2.0f; // Add 2m height for eye level
+        *rayStartY = (float)localY + 2.0f;
         *rayStartZ = (float)localZ;
     } else {
-        // Use actual camera position
         *rayStartX = XPLMGetDataf(camXRef);
         *rayStartY = XPLMGetDataf(camYRef);
         *rayStartZ = XPLMGetDataf(camZRef);
     }
     
-    // Get current screen dimensions
+    // Screen size needed for normalized coordinates
     XPLMDataRef screenWidthRef = XPLMFindDataRef("sim/graphics/view/window_width");
     XPLMDataRef screenHeightRef = XPLMFindDataRef("sim/graphics/view/window_height");
     int screenWidth = XPLMGetDatai(screenWidthRef);
     int screenHeight = XPLMGetDatai(screenHeightRef);
     
-    // Convert to normalized coordinates (-1 to 1)
+    // OpenGL normalized device coordinates
     float normalX = (2.0f * screenX / (float)screenWidth) - 1.0f;
     float normalY = 1.0f - (2.0f * screenY / (float)screenHeight);
     
-    // Get view parameters
+    // Current view orientation
     float heading = XPLMGetDataf(gViewHeading) * DEG_TO_RAD;
     float pitch = XPLMGetDataf(gViewPitch) * DEG_TO_RAD;
     
-    // Get actual field of view
+    // FOV determines ray spread angle
     XPLMDataRef fovRef = XPLMFindDataRef("sim/graphics/view/field_of_view_deg");
     float fov = fovRef ? XPLMGetDataf(fovRef) * DEG_TO_RAD : (45.0f * DEG_TO_RAD);
     float aspect = (float)screenWidth / (float)screenHeight;
     
-    // Calculate ray direction based on screen position and view angles
+    // Transform screen position to world direction vector
     float tanHalfFov = tan(fov * 0.5f);
     
-    // Ray direction in view space (camera relative)
+    // Calculate direction in camera space
     float viewX = normalX * tanHalfFov * aspect;
     float viewY = normalY * tanHalfFov;
-    float viewZ = -1.0f; // Forward direction (negative Z in OpenGL)
+    float viewZ = -1.0f;
     
-    // Transform ray direction by view rotation
+    // Apply view orientation to ray direction
     float cosHeading = cos(heading);
     float sinHeading = sin(heading);
     float cosPitch = cos(pitch);
     float sinPitch = sin(pitch);
     
-    // Apply pitch rotation (around X axis)
+    // Pitch rotation first
     float tempY = viewY * cosPitch - viewZ * sinPitch;
     float tempZ = viewY * sinPitch + viewZ * cosPitch;
     viewY = tempY;
     viewZ = tempZ;
     
-    // Apply heading rotation (around Y axis) 
+    // Then heading rotation
     *rayDirX = viewX * cosHeading - viewZ * sinHeading;
     *rayDirY = viewY;
     *rayDirZ = viewX * sinHeading + viewZ * cosHeading;
     
-    // Normalize direction vector
+    // Ensure unit vector for consistent scaling
     float length = sqrt(*rayDirX * *rayDirX + *rayDirY * *rayDirY + *rayDirZ * *rayDirZ);
     if (length > 0.0f) {
         *rayDirX /= length;
@@ -261,14 +286,9 @@ bool ScreenToWorldRay(int screenX, int screenY,
     return false;
 }
 
-// Perform laser designation at screen coordinates
+// Main targeting function - converts screen position to terrain coordinates
 bool DesignateLaser(int screenX, int screenY, TargetCoords* target) {
-    // Get ray start and direction
-    // double aircraftLat = XPLMGetDatad(gPlaneLatitude);
-    // double aircraftLon = XPLMGetDatad(gPlaneLongitude);
-    // double aircraftElev = XPLMGetDatad(gPlaneElevation);
-    
-    // Get ray start and direction using OpenGL matrices
+    // Convert screen coordinates to 3D ray
     float rayStartX, rayStartY, rayStartZ;
     float rayDirX, rayDirY, rayDirZ;
     
@@ -278,49 +298,48 @@ bool DesignateLaser(int screenX, int screenY, TargetCoords* target) {
         return false;
     }
     
-    // Perform terrain intersection using divide-and-conquer ray casting
-    // This is the proper way to do ray casting in X-Plane as discussed in forums
+    // Binary search for precise terrain intersection point
+    // More efficient than linear stepping and avoids missing terrain
     
-    float minDistance = 1.0f;      // 1 meter minimum
-    float maxDistance = 30000.0f;   // 30km maximum range
+    float minDistance = 1.0f;
+    float maxDistance = 30000.0f;
     float currentDistance = maxDistance;
     
     XPLMProbeInfo_t probeInfo;
     probeInfo.structSize = sizeof(XPLMProbeInfo_t);
     
-    // Binary search for terrain intersection
+    // Iterative refinement to 1-meter precision
     int iterations = 0;
-    const int maxIterations = 50; // Should be enough for 1-meter precision
+    const int maxIterations = 50;
     
     while ((maxDistance - minDistance) > 1.0f && iterations < maxIterations) {
         currentDistance = (minDistance + maxDistance) * 0.5f;
         
-        // Calculate test point along ray
+        // Test point at current distance
         float testX = rayStartX + rayDirX * currentDistance;
         float testY = rayStartY + rayDirY * currentDistance;
         float testZ = rayStartZ + rayDirZ * currentDistance;
         
-        // Probe terrain at this point
+        // Query terrain height at test point
         XPLMProbeResult result = XPLMProbeTerrainXYZ(gTerrainProbe, testX, testY, testZ, &probeInfo);
         
         if (result == xplm_ProbeHitTerrain) {
-            // We're above terrain, check if we're below ground level
             if (testY < probeInfo.locationY) {
-                // We're underground - intersection is closer
+                // Ray below terrain - intersection is closer
                 maxDistance = currentDistance;
             } else {
-                // We're above ground - intersection is further
+                // Ray above terrain - intersection is further
                 minDistance = currentDistance;
             }
         } else {
-            // No terrain data - probably too far out
+            // No terrain data available at this location
             maxDistance = currentDistance;
         }
         
         iterations++;
     }
     
-    // Final probe at the refined distance
+    // Final intersection calculation
     currentDistance = (minDistance + maxDistance) * 0.5f;
     float finalX = rayStartX + rayDirX * currentDistance;
     float finalY = rayStartY + rayDirY * currentDistance;
@@ -329,12 +348,11 @@ bool DesignateLaser(int screenX, int screenY, TargetCoords* target) {
     XPLMProbeResult finalResult = XPLMProbeTerrainXYZ(gTerrainProbe, finalX, finalY, finalZ, &probeInfo);
     
     if (finalResult == xplm_ProbeHitTerrain) {
-        // Store the terrain intersection point
         target->localX = probeInfo.locationX;
         target->localY = probeInfo.locationY;
         target->localZ = probeInfo.locationZ;
         
-        // Convert back to world coordinates
+        // Transform to lat/lon/elevation
         XPLMLocalToWorld(probeInfo.locationX, probeInfo.locationY, probeInfo.locationZ,
                        &target->latitude, &target->longitude, &target->elevation);
         
@@ -346,13 +364,13 @@ bool DesignateLaser(int screenX, int screenY, TargetCoords* target) {
     return false;
 }
 
-// Calculate bearing and distance to target
+// Navigation calculations for target relative to aircraft
 void CalculateTargetInfo(const TargetCoords* target, float* bearing, float* distance, float* elevation) {
     double aircraftLat = XPLMGetDatad(gPlaneLatitude);
     double aircraftLon = XPLMGetDatad(gPlaneLongitude);
     double aircraftElev = XPLMGetDatad(gPlaneElevation);
     
-    // Calculate bearing using great circle formula
+    // True bearing using spherical trigonometry
     double dLon = (target->longitude - aircraftLon) * DEG_TO_RAD;
     double lat1 = aircraftLat * DEG_TO_RAD;
     double lat2 = target->latitude * DEG_TO_RAD;
@@ -363,19 +381,19 @@ void CalculateTargetInfo(const TargetCoords* target, float* bearing, float* dist
     *bearing = atan2(y, x) * RAD_TO_DEG;
     if (*bearing < 0) *bearing += 360.0f;
     
-    // Calculate distance using haversine formula
+    // Great circle distance on Earth's surface
     double dLat = (target->latitude - aircraftLat) * DEG_TO_RAD;
     double a = sin(dLat/2) * sin(dLat/2) + cos(lat1) * cos(lat2) * sin(dLon/2) * sin(dLon/2);
     double c = 2 * atan2(sqrt(a), sqrt(1-a));
     *distance = (float)(EARTH_RADIUS * c);
     
-    // Calculate elevation difference
+    // Height difference for angle calculations
     *elevation = (float)(target->elevation - aircraftElev);
 }
 
-// Format coordinates for military grid reference (simplified MGRS)
+// Convert decimal degrees to military coordinate format
 void FormatMGRS(double latitude, double longitude, char* output, size_t outputSize) {
-    // This is a simplified MGRS format - full implementation would require UTM conversion
+    // Simplified format - full MGRS requires UTM grid calculations
     int latDeg = (int)latitude;
     int latMin = (int)((latitude - latDeg) * 60);
     float latSec = (float)(((latitude - latDeg) * 60 - latMin) * 60);
@@ -388,9 +406,9 @@ void FormatMGRS(double latitude, double longitude, char* output, size_t outputSi
              abs(latDeg), latMin, latSec, abs(lonDeg), lonMin, lonSec);
 }
 
-// Hotkey callback for laser designation (Ctrl+L)
+// Ctrl+L handler - designates target at screen center
 void LaserDesignationHotkey(void* refcon) {
-    // Use screen center as target point (crosshair designation)
+    // Target at crosshair (screen center)
     XPLMDataRef screenWidthRef = XPLMFindDataRef("sim/graphics/view/window_width");
     XPLMDataRef screenHeightRef = XPLMFindDataRef("sim/graphics/view/window_height");
     
@@ -398,15 +416,15 @@ void LaserDesignationHotkey(void* refcon) {
         int screenWidth = XPLMGetDatai(screenWidthRef);
         int screenHeight = XPLMGetDatai(screenHeightRef);
         
-        // Use screen center (crosshair/center of view)
+        // Calculate screen center coordinates
         int centerX = screenWidth / 2;
         int centerY = screenHeight / 2;
         
-        // Perform laser designation at screen center
+        // Execute targeting at crosshair
         if (DesignateLaser(centerX, centerY, &gLastTarget)) {
             XPLMDebugString("JTAC: Target designated successfully at crosshair\n");
             
-            // Send target to missile guidance system
+            // Activate missile guidance
             SetJTACTarget(gLastTarget.latitude, gLastTarget.longitude, gLastTarget.elevation,
                          gLastTarget.localX, gLastTarget.localY, gLastTarget.localZ);
         } else {
@@ -417,15 +435,15 @@ void LaserDesignationHotkey(void* refcon) {
     }
 }
 
-// Clear target hotkey callback (Ctrl+C)
+// Ctrl+C handler - clears all guidance targets
 void ClearTargetHotkey(void* refcon) {
     ClearMissileTarget();
     XPLMDebugString("JTAC: Missile target cleared\n");
 }
 
-// Menu handler callback
+// Plugin menu item handler
 void JTACMenuHandler(void* inMenuRef, void* inItemRef) {
-    if ((intptr_t)inItemRef == 1) { // Toggle Window menu item
+    if ((intptr_t)inItemRef == 1) {
         if (gWindow) {
             int isVisible = XPLMGetWindowIsVisible(gWindow);
             XPLMSetWindowIsVisible(gWindow, !isVisible);
@@ -434,18 +452,18 @@ void JTACMenuHandler(void* inMenuRef, void* inItemRef) {
     }
 }
 
-// Display window draw function
+// Renders JTAC coordinate display window
 void DrawWindow(XPLMWindowID inWindowID, void* inRefcon) {
     int left, top, right, bottom;
     XPLMGetWindowGeometry(inWindowID, &left, &top, &right, &bottom);
     
-    // Draw background
+    // Semi-transparent background
     XPLMDrawTranslucentDarkBox(left, top, right, bottom);
     
     char buffer[512];
     int line = 0;
     
-    // Display aircraft position
+    // Show current aircraft location
     double aircraftLat = XPLMGetDatad(gPlaneLatitude);
     double aircraftLon = XPLMGetDatad(gPlaneLongitude);
     double aircraftElev = XPLMGetDatad(gPlaneElevation);
@@ -457,29 +475,29 @@ void DrawWindow(XPLMWindowID inWindowID, void* inRefcon) {
     snprintf(buffer, sizeof(buffer), "Aircraft: %.6f, %.6f, %.0fm", aircraftLat, aircraftLon, aircraftElev);
     XPLMDrawString(white, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
     
-    // Display target information if valid
+    // Show targeting data when available
     if (gLastTarget.valid) {
-        line++; // Skip a line
+        line++;
         
         snprintf(buffer, sizeof(buffer), "TARGET COORDINATES:");
         float yellow[] = {1.0f, 1.0f, 0.0f};
         XPLMDrawString(yellow, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
         
-        // MGRS format
+        // Military grid format
         char mgrs[128];
         FormatMGRS(gLastTarget.latitude, gLastTarget.longitude, mgrs, sizeof(mgrs));
         snprintf(buffer, sizeof(buffer), "MGRS: %s", mgrs);
         XPLMDrawString(white, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
         
-        // Decimal degrees
+        // High precision coordinates
         snprintf(buffer, sizeof(buffer), "LAT/LON: %.6f, %.6f", gLastTarget.latitude, gLastTarget.longitude);
         XPLMDrawString(white, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
         
-        // Elevation
+        // Target altitude
         snprintf(buffer, sizeof(buffer), "ELEVATION: %.0fm MSL", gLastTarget.elevation);
         XPLMDrawString(white, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
         
-        // Bearing, distance, elevation difference
+        // Navigation information
         float bearing, distance, elevDiff;
         CalculateTargetInfo(&gLastTarget, &bearing, &distance, &elevDiff);
         
@@ -493,7 +511,7 @@ void DrawWindow(XPLMWindowID inWindowID, void* inRefcon) {
         XPLMDrawString(white, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
     }
     
-    // Instructions
+    // Usage instructions
     line++;
     snprintf(buffer, sizeof(buffer), "Press Ctrl+L to designate target at crosshair");
     float gray[] = {0.78f, 0.78f, 0.78f};
@@ -506,7 +524,7 @@ void DrawWindow(XPLMWindowID inWindowID, void* inRefcon) {
     XPLMDrawString(gray, left + 10, top - 20 - (line++ * 15), buffer, NULL, xplmFont_Proportional);
 }
 
-// Create window
+// Initialize JTAC display window
 void CreateJTACWindow() {
     XPLMCreateWindow_t params;
     params.structSize = sizeof(params);

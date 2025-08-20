@@ -1,3 +1,27 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) sebastian <sebastian@eingabeausgabe.io>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 #include "XPLMDataAccess.h"
 #include "XPLMUtilities.h"
 #include "XPLMProcessing.h"
@@ -12,14 +36,14 @@
 #define DEG_TO_RAD (M_PI / 180.0)
 #define RAD_TO_DEG (180.0 / M_PI)
 
-// Missile guidance data refs (array datarefs)
+// X-Plane weapon datarefs are array-based to support multiple missiles
 static XPLMDataRef gMissileX;
 static XPLMDataRef gMissileY;
 static XPLMDataRef gMissileZ;
 static XPLMDataRef gMissileVX;
 static XPLMDataRef gMissileVY;
 static XPLMDataRef gMissileVZ;
-static XPLMDataRef gMissileQ1; // Quaternion components
+static XPLMDataRef gMissileQ1;
 static XPLMDataRef gMissileQ2;
 static XPLMDataRef gMissileQ3;
 static XPLMDataRef gMissileQ4;
@@ -30,12 +54,12 @@ static XPLMDataRef gMissileTargetH;
 static XPLMDataRef gMissileType;
 static XPLMDataRef gWeaponCount;
 
-// Aircraft data refs
+// Aircraft position needed for relative calculations
 static XPLMDataRef gPlaneLatitude;
 static XPLMDataRef gPlaneLongitude;
 static XPLMDataRef gPlaneElevation;
 
-// Target coordinates from JTAC system
+// Target coordinates storage - maintains both world and local coordinates
 struct TargetCoords {
     double latitude;
     double longitude;
@@ -47,7 +71,7 @@ struct TargetCoords {
 static TargetCoords gGuidanceTarget = {0};
 static bool gGuidanceActive = false;
 
-// Track multiple active missiles
+// X-Plane supports up to 25 simultaneous weapons
 #define MAX_MISSILES 25
 struct ActiveMissile {
     int index;
@@ -57,7 +81,7 @@ struct ActiveMissile {
 static ActiveMissile gActiveMissiles[MAX_MISSILES];
 static int gNumActiveMissiles = 0;
 
-// Quaternion utility functions
+// Quaternion math for missile orientation - needed because X-Plane uses quaternions internally
 void NormalizeQuaternion(float* q1, float* q2, float* q3, float* q4) {
     float magnitude = sqrt(*q1 * *q1 + *q2 * *q2 + *q3 * *q3 + *q4 * *q4);
     if (magnitude > 0.0001f) {
@@ -70,8 +94,8 @@ void NormalizeQuaternion(float* q1, float* q2, float* q3, float* q4) {
 
 void QuaternionFromDirectionVector(float dirX, float dirY, float dirZ, 
                                    float* q1, float* q2, float* q3, float* q4) {
-    // Create quaternion that rotates missile to point in direction vector
-    // This is a simplified version - assumes missile forward is along Z axis
+    // Converts direction vector to quaternion for missile orientation
+    // Assumes X-Plane missile model has forward axis along +Z
     
     // Normalize direction vector
     float length = sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ);
@@ -85,19 +109,17 @@ void QuaternionFromDirectionVector(float dirX, float dirY, float dirZ,
     float dot = dirZ; // dot product with (0,0,1)
     
     if (dot > 0.9999f) {
-        // Already pointing forward
         *q1 = 1.0f; *q2 = 0.0f; *q3 = 0.0f; *q4 = 0.0f;
         return;
     }
     
     if (dot < -0.9999f) {
-        // Pointing backward - rotate 180 degrees around X axis
         *q1 = 0.0f; *q2 = 1.0f; *q3 = 0.0f; *q4 = 0.0f;
         return;
     }
     
-    // Cross product to get rotation axis
-    float axisX = 0.0f - dirY; // (0,0,1) x (dirX,dirY,dirZ)
+    // Cross product (0,0,1) x direction gives rotation axis
+    float axisX = 0.0f - dirY;
     float axisY = dirX - 0.0f;
     float axisZ = 0.0f - 0.0f;
     
@@ -120,11 +142,11 @@ void QuaternionFromDirectionVector(float dirX, float dirY, float dirZ,
     NormalizeQuaternion(q1, q2, q3, q4);
 }
 
-// Flight callback
+// Forward declaration for X-Plane flight loop callback
 float MissileGuidanceCallback(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, 
                              int inCounter, void* inRefcon);
 
-// Initialize missile guidance system
+// Finds X-Plane weapon datarefs and registers flight loop callback
 bool InitializeMissileGuidance() {
     // Get weapon count
     gWeaponCount = XPLMFindDataRef("sim/weapons/weapon_count");
@@ -163,7 +185,7 @@ bool InitializeMissileGuidance() {
 }
 
 
-// Set target coordinates for missile guidance
+// Internal function to update guidance target
 void SetMissileTarget(const TargetCoords& target) {
     gGuidanceTarget = target;
     gGuidanceActive = target.valid;
@@ -177,7 +199,7 @@ void SetMissileTarget(const TargetCoords& target) {
     }
 }
 
-// Check if missile is already being tracked
+// Prevents duplicate tracking of same missile index
 bool IsMissileTracked(int missileIndex) {
     for (int i = 0; i < gNumActiveMissiles; i++) {
         if (gActiveMissiles[i].index == missileIndex) {
@@ -187,7 +209,7 @@ bool IsMissileTracked(int missileIndex) {
     return false;
 }
 
-// Add a missile to the active tracking list
+// Starts guidance for newly detected missile
 void AddActiveMissile(int missileIndex) {
     if (gNumActiveMissiles >= MAX_MISSILES || IsMissileTracked(missileIndex)) {
         return;
@@ -204,7 +226,7 @@ void AddActiveMissile(int missileIndex) {
     XPLMDebugString(buffer);
 }
 
-// Remove inactive missiles from tracking
+// Cleans up missiles that have exploded or disappeared
 void CleanupInactiveMissiles() {
     if (!gWeaponCount || !gMissileType) return;
     
@@ -237,7 +259,7 @@ void CleanupInactiveMissiles() {
     }
 }
 
-// Find new missiles that need to be tracked
+// Detects newly fired missiles and adds them to guidance
 void FindNewMissiles() {
     if (!gWeaponCount || !gMissileType) return;
     
@@ -253,7 +275,7 @@ void FindNewMissiles() {
     }
 }
 
-// Missile physics and guidance parameters
+// Per-missile state tracking for smooth guidance
 struct MissileState {
     float prevPosX, prevPosY, prevPosZ;
     float prevVelX, prevVelY, prevVelZ;
@@ -264,7 +286,7 @@ struct MissileState {
 
 static MissileState gMissileStates[25] = {0};
 
-// Simple, smooth guidance - don't touch speed, just direction
+// Proportional navigation guidance - preserves missile speed, only adjusts direction
 void CalculateSmoothGuidance(int missileIndex, float deltaTime) {
     if (!gGuidanceTarget.valid || missileIndex < 0 || missileIndex >= 25) return;
     
@@ -316,10 +338,10 @@ void CalculateSmoothGuidance(int missileIndex, float deltaTime) {
     float currentDirY = missileVY / currentSpeed;
     float currentDirZ = missileVZ / currentSpeed;
     
-    // Very gentle steering - small correction factor
-    float steeringGain = 0.05f; // Very small - smooth changes only
+    // Low gain prevents oscillation and maintains stable flight
+    float steeringGain = 0.05f;
     
-    // Calculate new direction (interpolate very slowly toward target)
+    // Smooth interpolation prevents violent course corrections
     float newDirX = currentDirX + (desiredDirX - currentDirX) * steeringGain;
     float newDirY = currentDirY + (desiredDirY - currentDirY) * steeringGain;
     float newDirZ = currentDirZ + (desiredDirZ - currentDirZ) * steeringGain;
@@ -332,21 +354,21 @@ void CalculateSmoothGuidance(int missileIndex, float deltaTime) {
         newDirZ /= newDirLength;
     }
     
-    // Apply the same speed in the new direction
+    // Preserve original missile speed to maintain X-Plane physics
     float newVX = newDirX * currentSpeed;
     float newVY = newDirY * currentSpeed;
     float newVZ = newDirZ * currentSpeed;
     
-    // Set new velocity (preserving speed, only changing direction)
+    // Only modify direction vector, not magnitude
     XPLMSetDatavf(gMissileVX, &newVX, missileIndex, 1);
     XPLMSetDatavf(gMissileVY, &newVY, missileIndex, 1);
     XPLMSetDatavf(gMissileVZ, &newVZ, missileIndex, 1);
     
-    // Keep thrust steady
+    // Maintain consistent thrust for predictable flight
     float steadyThrust = 0.8f;
     XPLMSetDatavf(gMissileThrustRat, &steadyThrust, missileIndex, 1);
     
-    // Update orientation to match velocity direction (very gently)
+    // Gradually align missile body with flight direction
     if (gMissileQ1 && gMissileQ2 && gMissileQ3 && gMissileQ4) {
         float q1, q2, q3, q4;
         QuaternionFromDirectionVector(newDirX, newDirY, newDirZ, &q1, &q2, &q3, &q4);
@@ -358,8 +380,8 @@ void CalculateSmoothGuidance(int missileIndex, float deltaTime) {
         XPLMGetDatavf(gMissileQ3, &currentQ[2], missileIndex, 1);
         XPLMGetDatavf(gMissileQ4, &currentQ[3], missileIndex, 1);
         
-        // Very gentle orientation changes
-        float orientationGain = 0.02f; // Even gentler than before
+        // Even lower gain for orientation to prevent visual jittering
+        float orientationGain = 0.02f;
         float newQ1 = currentQ[0] + (q1 - currentQ[0]) * orientationGain;
         float newQ2 = currentQ[1] + (q2 - currentQ[1]) * orientationGain;
         float newQ3 = currentQ[2] + (q3 - currentQ[2]) * orientationGain;
@@ -373,25 +395,25 @@ void CalculateSmoothGuidance(int missileIndex, float deltaTime) {
     }
 }
 
-// Flight loop callback for missile guidance
+// Called by X-Plane every 0.05 seconds during flight
 float MissileGuidanceCallback(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, 
                              int inCounter, void* inRefcon) {
     
     if (!gGuidanceActive) {
-        return 0.1f; // Call again in 0.1 seconds
+        return 0.1f;
     }
     
-    // Clean up missiles that are no longer active
+    // Maintain active missile list
     CleanupInactiveMissiles();
     
-    // Find any new missiles that need guidance
+    // Track newly fired missiles
     FindNewMissiles();
     
-    // Guide all active missiles
+    // Apply guidance to each tracked missile
     for (int i = 0; i < gNumActiveMissiles; i++) {
         int missileIndex = gActiveMissiles[i].index;
         
-        // Set target coordinates for this missile if it has a target
+        // Update X-Plane's internal target datarefs
         if (gActiveMissiles[i].hasTarget && gMissileTargetLat && gMissileTargetLon && gMissileTargetH) {
             float targetLat = (float)gGuidanceTarget.latitude;
             float targetLon = (float)gGuidanceTarget.longitude;
@@ -402,16 +424,16 @@ float MissileGuidanceCallback(float inElapsedSinceLastCall, float inElapsedTimeS
             XPLMSetDatavf(gMissileTargetH, &targetElev, missileIndex, 1);
         }
         
-        // Apply smooth guidance to this missile
+        // Calculate and apply course corrections
         if (gActiveMissiles[i].hasTarget) {
             CalculateSmoothGuidance(missileIndex, inElapsedSinceLastCall);
         }
     }
     
-    return 0.05f; // Call again in 0.05 seconds for responsive guidance
+    return 0.05f; // 20Hz update rate for smooth guidance
 }
 
-// External interface for JTAC system
+// C interface for integration with main plugin
 extern "C" {
     bool InitMissileGuidance() {
         return InitializeMissileGuidance();

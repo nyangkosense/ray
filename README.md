@@ -1,9 +1,14 @@
-# X-Plane 12 JTAC Coordinate System Plugin with missile guidance
-![2014780_319](https://github.com/user-attachments/assets/5d265fbd-f6bc-4b2b-addf-7de1c6cfd4f5)
+# X-Plane 12 JTAC Coordinate System Plugin
+
+![JTAC Plugin Screenshot](https://github.com/user-attachments/assets/5d265fbd-f6bc-4b2b-addf-7de1c6cfd4f5)
 
 ## Overview
 
 This plugin implements a realistic Joint Terminal Attack Controller (JTAC) coordinate designation system for X-Plane 12. It combines precise terrain probing with missile guidance capabilities, allowing pilots to designate targets and guide missiles to specific coordinates using real-world military procedures.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## How It Works
 
@@ -174,16 +179,22 @@ This system evolved from a simple coordinate display to a complete JTAC solution
 3. **Ray Casting Refinement**: Implemented binary search for precision
 4. **Missile Integration**: Added weapon system integration
 5. **Physics Optimization**: Simplified guidance to prevent oscillation
-6. **Final Polish**: Make the Plugin Toggable, create a Menuentry for convenience
+6. **Final Polish**: Made plugin toggleable and added menu entry for convenience
 
 The key breakthrough was realizing that accurate targeting requires using the camera/view position rather than the aircraft position, combined with proper binary search terrain intersection rather than linear probing.
 
-## Future Enhancements
+## Contributign & Future Enhancements
+
+### Contributing
+
+If you want to help making this plugin more "mature" - you are welcome to do so!
+
+### Future Enhancements
 
 - Integration with FLIR camera systems for visual targeting
 - Support for moving targets
 - Multiple simultaneous target designation
-- Advanced missile guidance modes (terminal homing, etc.)
+- Advanced missile guidance modes (maybe homing?, etc.)
 - Integration with external navigation systems
 
 This plugin demonstrates how precise mathematical modeling combined with X-Plane's robust API can create realistic military simulation capabilities within the flight simulator environment.
